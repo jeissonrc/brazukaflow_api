@@ -2,6 +2,30 @@ const Expense = require('../models/Expense');
 const CashAccount = require('../models/CashAccount');
 const AccountType = require('../models/AccountType');
 
+const getTodayDateOnly = () => {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const normalizeDateOnly = (value) => {
+  if (!value) {
+    return null;
+  }
+
+  if (typeof value === 'string') {
+    return value.slice(0, 10);
+  }
+
+  if (value instanceof Date) {
+    return value.toISOString().slice(0, 10);
+  }
+
+  return value;
+};
+
 class ExpenseService {
   async getAll() {
     return await Expense.findAll({
@@ -49,7 +73,7 @@ class ExpenseService {
       accountTypeId: data.accountTypeId || null,
       description: data.description || null,
       value: data.value,
-      expenseDate: data.expenseDate || new Date()
+      expenseDate: normalizeDateOnly(data.expenseDate) || getTodayDateOnly()
     });
   }
 
@@ -84,7 +108,7 @@ class ExpenseService {
       accountTypeId: data.accountTypeId ?? expense.accountTypeId,
       description: data.description ?? expense.description,
       value: data.value ?? expense.value,
-      expenseDate: data.expenseDate ?? expense.expenseDate
+      expenseDate: data.expenseDate !== undefined ? normalizeDateOnly(data.expenseDate) : expense.expenseDate
     });
 
     return expense;

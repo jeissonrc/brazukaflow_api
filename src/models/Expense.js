@@ -46,7 +46,7 @@ const Expense = sequelize.define(
     },
 
     expenseDate: {
-      type: DataTypes.DATE,
+      type: DataTypes.DATEONLY,
       allowNull: true,
       field: 'Data_Despesa'
     }

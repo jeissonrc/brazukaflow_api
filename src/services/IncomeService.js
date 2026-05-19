@@ -2,6 +2,30 @@ const Income = require('../models/Income');
 const CashAccount = require('../models/CashAccount');
 const AccountType = require('../models/AccountType');
 
+const getTodayDateOnly = () => {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const normalizeDateOnly = (value) => {
+  if (!value) {
+    return null;
+  }
+
+  if (typeof value === 'string') {
+    return value.slice(0, 10);
+  }
+
+  if (value instanceof Date) {
+    return value.toISOString().slice(0, 10);
+  }
+
+  return value;
+};
+
 class IncomeService {
   async getAll() {
     return await Income.findAll({
@@ -49,7 +73,7 @@ class IncomeService {
       accountTypeId: data.accountTypeId || null,
       description: data.description || null,
       value: data.value,
-      incomeDate: data.incomeDate || new Date()
+      incomeDate: normalizeDateOnly(data.incomeDate) || getTodayDateOnly()
     });
   }
 
@@ -84,7 +108,7 @@ class IncomeService {
       accountTypeId: data.accountTypeId !== undefined ? data.accountTypeId : inc.accountTypeId,
       description: data.description !== undefined ? data.description : inc.description,
       value: data.value !== undefined ? data.value : inc.value,
-      incomeDate: data.incomeDate !== undefined ? data.incomeDate : inc.incomeDate
+      incomeDate: data.incomeDate !== undefined ? normalizeDateOnly(data.incomeDate) : inc.incomeDate
     });
 
     return inc;

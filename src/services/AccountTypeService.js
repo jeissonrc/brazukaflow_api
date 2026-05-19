@@ -20,7 +20,13 @@ class AccountTypeService {
       throw error;
     }
 
-    return await AccountType.create(data);
+    return await AccountType.create({
+      description: data.description,
+      type: data.type || null,
+      specie: data.specie ?? null,
+      status: data.status !== undefined ? data.status : true,
+      categoryId: data.categoryId
+    });
   }
 
   async update(id, data) {
@@ -31,7 +37,13 @@ class AccountTypeService {
       throw error;
     }
 
-    await account.update(data);
+    await account.update({
+      description: data.description ?? account.description,
+      type: data.type ?? account.type,
+      specie: data.specie ?? account.specie,
+      status: data.status !== undefined ? data.status : account.status,
+      categoryId: data.categoryId ?? account.categoryId
+    });
     return account;
   }
 

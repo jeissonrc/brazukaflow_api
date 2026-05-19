@@ -2,15 +2,50 @@ const AccountsPayable = require('../models/AccountsPayable');
 const OriginAccount = require('../models/OriginAccount');
 const AccountType = require('../models/AccountType');
 const PaymentType = require('../models/PaymentType');
+const CategoryType = require('../models/CategoryType');
 const sequelize = require('../config/database');
 const { Op } = require('sequelize');
+
+const normalizeDateOnly = (value) => {
+  if (!value) return null;
+  if (value instanceof Date) return value.toISOString().slice(0, 10);
+  return String(value).slice(0, 10);
+};
+
+const validateRequiredPayableFields = (data) => {
+  const value = Number(data.value);
+
+  if (
+    !data.description ||
+    !String(data.description).trim() ||
+    !data.accountTypeId ||
+    !data.paymentTypeId ||
+    !data.nominalDate ||
+    !data.dueDate ||
+    !Number.isFinite(value) ||
+    value <= 0
+  ) {
+    const err = new Error('Description, accountTypeId, paymentTypeId, nominalDate, dueDate and value are required');
+    err.status = 400;
+    throw err;
+  }
+
+  const nominalDate = normalizeDateOnly(data.nominalDate);
+  const dueDate = normalizeDateOnly(data.dueDate);
+
+  if (nominalDate > dueDate) {
+    const err = new Error('Nominal date cannot be greater than due date');
+    err.status = 400;
+    throw err;
+  }
+};
 
 class AccountsPayableService {
   
   async getAll() {
     return await AccountsPayable.findAll({
       include: [
-        { model: AccountType, as: 'accountType' },
+        { model: AccountType, as: 'accountType', include: [{ model: CategoryType, as: 'category' }] },
         { model: PaymentType, as: 'paymentType' }
       ]
     });
@@ -19,7 +54,7 @@ class AccountsPayableService {
   async getOne(id) {
     return await AccountsPayable.findByPk(id, {
       include: [
-        { model: AccountType, as: 'accountType' },
+        { model: AccountType, as: 'accountType', include: [{ model: CategoryType, as: 'category' }] },
         { model: PaymentType, as: 'paymentType' }
       ]
     });
@@ -81,11 +116,7 @@ class AccountsPayableService {
   // CREATE NORMAL → NÃO coloca origem na descrição
   // --------------------------------------------------------
   async create(data) {
-    if (!data.accountTypeId || !data.value) {
-      const err = new Error('accountTypeId and value are required');
-      err.status = 400;
-      throw err;
-    }
+    validateRequiredPayableFields(data);
 
     const at = await AccountType.findByPk(data.accountTypeId);
     if (!at) {
@@ -94,23 +125,21 @@ class AccountsPayableService {
       throw err;
     }
 
-    if (data.paymentTypeId) {
-      const pt = await PaymentType.findByPk(data.paymentTypeId);
-      if (!pt) {
-        const err = new Error('Payment type not found');
-        err.status = 404;
-        throw err;
-      }
+    const pt = await PaymentType.findByPk(data.paymentTypeId);
+    if (!pt) {
+      const err = new Error('Payment type not found');
+      err.status = 404;
+      throw err;
     }
 
     return await AccountsPayable.create({
       accountTypeId: data.accountTypeId,
-      nominalDate: data.nominalDate || null,
-      dueDate: data.dueDate || null,
+      nominalDate: data.nominalDate,
+      dueDate: data.dueDate,
       paymentDate: null,
-      paymentTypeId: data.paymentTypeId || null,
+      paymentTypeId: data.paymentTypeId,
       documentNumber: data.documentNumber || null,
-      description: data.description || null, // ← sem origem aqui
+      description: data.description.trim(), // ← sem origem aqui
       value: data.value,
       paid: data.paid ? true : false,
       originId: data.originId || null
@@ -136,11 +165,14 @@ class AccountsPayableService {
       throw err;
     }
 
-    if (!accountTypeId || !value) {
-      const err = new Error('accountTypeId and value are required');
-      err.status = 400;
-      throw err;
-    }
+    validateRequiredPayableFields({
+      description,
+      accountTypeId,
+      paymentTypeId,
+      nominalDate,
+      dueDate,
+      value
+    });
 
     const at = await AccountType.findByPk(accountTypeId);
     if (!at) {
@@ -149,13 +181,11 @@ class AccountsPayableService {
       throw err;
     }
 
-    if (paymentTypeId) {
-      const pt = await PaymentType.findByPk(paymentTypeId);
-      if (!pt) {
-        const err = new Error('Payment type not found');
-        err.status = 404;
-        throw err;
-      }
+    const pt = await PaymentType.findByPk(paymentTypeId);
+    if (!pt) {
+      const err = new Error('Payment type not found');
+      err.status = 404;
+      throw err;
     }
 
     const raw = parseFloat(value);
@@ -177,7 +207,7 @@ class AccountsPayableService {
 
         // Aqui monta a descrição com ID da origem
         const baseDesc = description || origin.Descricao || origin.description || '';
-        const descFinal = `${baseDesc} - ${i + 1}/${installments} (Origem: Código ${originId})`;
+        const descFinal = `${baseDesc} - ${i + 1}/${installments} (Origem: ${originId})`;
 
         const doc = documentNumber
           ? `${documentNumber} - ${i + 1}/${installments}`
@@ -214,40 +244,44 @@ class AccountsPayableService {
       throw err;
     }
 
-    if (acc.paid) {
-      const err = new Error('Cannot update a paid payable');
-      err.status = 400;
-      throw err;
-    }
-
-    if (data.accountTypeId) {
-      const at = await AccountType.findByPk(data.accountTypeId);
-      if (!at) {
-        const err = new Error('Account type not found');
-        err.status = 404;
-        throw err;
-      }
-    }
-
-    if (data.paymentTypeId) {
-      const pt = await PaymentType.findByPk(data.paymentTypeId);
-      if (!pt) {
-        const err = new Error('Payment type not found');
-        err.status = 404;
-        throw err;
-      }
-    }
-
-    await acc.update({
+    const nextData = {
       accountTypeId: data.accountTypeId ?? acc.accountTypeId,
       nominalDate: data.nominalDate ?? acc.nominalDate,
       dueDate: data.dueDate ?? acc.dueDate,
       paymentDate: data.paymentDate ?? acc.paymentDate,
       paymentTypeId: data.paymentTypeId ?? acc.paymentTypeId,
       documentNumber: data.documentNumber ?? acc.documentNumber,
-      description: data.description ?? acc.description, // ← sem origem aqui
+      description: data.description ?? acc.description,
       value: data.value ?? acc.value,
       originId: data.originId ?? acc.originId
+    };
+
+    validateRequiredPayableFields(nextData);
+
+    const at = await AccountType.findByPk(nextData.accountTypeId);
+    if (!at) {
+      const err = new Error('Account type not found');
+      err.status = 404;
+      throw err;
+    }
+
+    const pt = await PaymentType.findByPk(nextData.paymentTypeId);
+    if (!pt) {
+      const err = new Error('Payment type not found');
+      err.status = 404;
+      throw err;
+    }
+
+    await acc.update({
+      accountTypeId: nextData.accountTypeId,
+      nominalDate: nextData.nominalDate,
+      dueDate: nextData.dueDate,
+      paymentDate: nextData.paymentDate,
+      paymentTypeId: nextData.paymentTypeId,
+      documentNumber: nextData.documentNumber,
+      description: String(nextData.description).trim(), // ← sem origem aqui
+      value: nextData.value,
+      originId: nextData.originId
     });
 
     return acc;
@@ -262,7 +296,7 @@ class AccountsPayableService {
     }
 
     if (acc.paid) {
-      const err = new Error('Paid accounts cannot be deleted. Please unpay the account before attempting to delete it.');
+      const err = new Error('Conta paga não pode ser removida. Desmarque a conta como paga antes de excluir.');
       err.status = 400;
       throw err;
     }
@@ -318,7 +352,6 @@ class AccountsPayableService {
 
     acc.paid = false;
     acc.paymentDate = null;
-    acc.paymentTypeId = null;
 
     await acc.save();
     return acc;

@@ -22,9 +22,15 @@ const AccountType = sequelize.define(
       field: 'Tipo'
     },
     specie: {
-      type: DataTypes.BOOLEAN,
+      type: DataTypes.STRING(30),
       allowNull: true,
       field: 'Especie'
+    },
+    status: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true,
+      field: 'Status_Tipo'
     },
     categoryId: {
       type: DataTypes.INTEGER.UNSIGNED,

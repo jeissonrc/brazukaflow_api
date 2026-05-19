@@ -32,7 +32,7 @@ const Income = sequelize.define(
     field: 'Valor'
   },
   incomeDate: {
-    type: DataTypes.DATE,
+    type: DataTypes.DATEONLY,
     allowNull: true,
     field: 'Data_Receita'
   },

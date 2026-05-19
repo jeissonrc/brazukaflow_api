@@ -22,7 +22,8 @@ class CategoryTypeService {
     const category = await CategoryType.create({
       description: data.description,
       type: data.type || null,
-      specie: data.specie ?? null
+      specie: data.specie ?? null,
+      status: data.status !== undefined ? data.status : true
     });
 
     return category;
@@ -41,7 +42,8 @@ class CategoryTypeService {
     await category.update({
       description: data.description ?? category.description,
       type: data.type ?? category.type,
-      specie: data.specie ?? category.specie
+      specie: data.specie ?? category.specie,
+      status: data.status !== undefined ? data.status : category.status
     });
 
     return category;

@@ -2,15 +2,50 @@ const AccountsReceivable = require('../models/AccountsReceivable');
 const OriginAccount = require('../models/OriginAccount');
 const AccountType = require('../models/AccountType');
 const PaymentType = require('../models/PaymentType');
+const CategoryType = require('../models/CategoryType');
 const sequelize = require('../config/database');
 const { Op } = require('sequelize');
+
+const normalizeDateOnly = (value) => {
+  if (!value) return null;
+  if (value instanceof Date) return value.toISOString().slice(0, 10);
+  return String(value).slice(0, 10);
+};
+
+const validateRequiredReceivableFields = (data) => {
+  const value = Number(data.value);
+
+  if (
+    !data.description ||
+    !String(data.description).trim() ||
+    !data.accountTypeId ||
+    !data.paymentTypeId ||
+    !data.nominalDate ||
+    !data.dueDate ||
+    !Number.isFinite(value) ||
+    value <= 0
+  ) {
+    const err = new Error('Description, accountTypeId, paymentTypeId, nominalDate, dueDate and value are required');
+    err.status = 400;
+    throw err;
+  }
+
+  const nominalDate = normalizeDateOnly(data.nominalDate);
+  const dueDate = normalizeDateOnly(data.dueDate);
+
+  if (nominalDate > dueDate) {
+    const err = new Error('Nominal date cannot be greater than due date');
+    err.status = 400;
+    throw err;
+  }
+};
 
 class AccountsReceivableService {
 
   async getAll() {
     return await AccountsReceivable.findAll({
       include: [
-        { model: AccountType, as: 'accountType' },
+        { model: AccountType, as: 'accountType', include: [{ model: CategoryType, as: 'category' }] },
         { model: PaymentType, as: 'paymentType' }
       ]
     });
@@ -19,7 +54,7 @@ class AccountsReceivableService {
   async getOne(id) {
     return await AccountsReceivable.findByPk(id, {
       include: [
-        { model: AccountType, as: 'accountType' },
+        { model: AccountType, as: 'accountType', include: [{ model: CategoryType, as: 'category' }] },
         { model: PaymentType, as: 'paymentType' }
       ]
     });
@@ -71,11 +106,7 @@ class AccountsReceivableService {
   // CREATE NORMAL
   // --------------------------------------------------------
   async create(data) {
-    if (!data.accountTypeId || !data.value) {
-      const err = new Error('accountTypeId and value are required');
-      err.status = 400;
-      throw err;
-    }
+    validateRequiredReceivableFields(data);
 
     const at = await AccountType.findByPk(data.accountTypeId);
     if (!at) {
@@ -84,23 +115,21 @@ class AccountsReceivableService {
       throw err;
     }
 
-    if (data.paymentTypeId) {
-      const pt = await PaymentType.findByPk(data.paymentTypeId);
-      if (!pt) {
-        const err = new Error('Payment type not found');
-        err.status = 404;
-        throw err;
-      }
+    const pt = await PaymentType.findByPk(data.paymentTypeId);
+    if (!pt) {
+      const err = new Error('Payment type not found');
+      err.status = 404;
+      throw err;
     }
 
     return await AccountsReceivable.create({
       accountTypeId: data.accountTypeId,
-      nominalDate: data.nominalDate || null,
-      dueDate: data.dueDate || null,
+      nominalDate: data.nominalDate,
+      dueDate: data.dueDate,
       paymentDate: null,
-      paymentTypeId: data.paymentTypeId || null,
+      paymentTypeId: data.paymentTypeId,
       documentNumber: data.documentNumber || null,
-      description: data.description || null,
+      description: data.description.trim(),
       value: data.value,
       paid: data.paid ? true : false,
       originId: data.originId || null
@@ -126,11 +155,14 @@ class AccountsReceivableService {
       throw err;
     }
 
-    if (!accountTypeId || !value) {
-      const err = new Error('accountTypeId and value are required');
-      err.status = 400;
-      throw err;
-    }
+    validateRequiredReceivableFields({
+      description,
+      accountTypeId,
+      paymentTypeId,
+      nominalDate,
+      dueDate,
+      value
+    });
 
     const at = await AccountType.findByPk(accountTypeId);
     if (!at) {
@@ -139,13 +171,11 @@ class AccountsReceivableService {
       throw err;
     }
 
-    if (paymentTypeId) {
-      const pt = await PaymentType.findByPk(paymentTypeId);
-      if (!pt) {
-        const err = new Error('Payment type not found');
-        err.status = 404;
-        throw err;
-      }
+    const pt = await PaymentType.findByPk(paymentTypeId);
+    if (!pt) {
+      const err = new Error('Payment type not found');
+      err.status = 404;
+      throw err;
     }
 
     const raw = parseFloat(value);
@@ -165,7 +195,7 @@ class AccountsReceivableService {
         const installmentValue = i === installments - 1 ? per + remainder : per;
 
         const baseDesc = description || origin.Descricao || origin.description || '';
-        const finalDesc = `${baseDesc} - ${i + 1}/${installments} (Origem: Código ${originId})`;
+        const finalDesc = `${baseDesc} - ${i + 1}/${installments} (Origem: ${originId})`;
 
         const doc = documentNumber
           ? `${documentNumber} - ${i + 1}/${installments}`
@@ -205,31 +235,7 @@ class AccountsReceivableService {
       throw err;
     }
 
-    if (acc.paid) {
-      const err = new Error('Cannot update a received receivable');
-      err.status = 400;
-      throw err;
-    }
-
-    if (data.accountTypeId) {
-      const at = await AccountType.findByPk(data.accountTypeId);
-      if (!at) {
-        const err = new Error('Account type not found');
-        err.status = 404;
-        throw err;
-      }
-    }
-
-    if (data.paymentTypeId) {
-      const pt = await PaymentType.findByPk(data.paymentTypeId);
-      if (!pt) {
-        const err = new Error('Payment type not found');
-        err.status = 404;
-        throw err;
-      }
-    }
-
-    await acc.update({
+    const nextData = {
       accountTypeId: data.accountTypeId ?? acc.accountTypeId,
       nominalDate: data.nominalDate ?? acc.nominalDate,
       dueDate: data.dueDate ?? acc.dueDate,
@@ -239,6 +245,34 @@ class AccountsReceivableService {
       description: data.description ?? acc.description,
       value: data.value ?? acc.value,
       originId: data.originId ?? acc.originId
+    };
+
+    validateRequiredReceivableFields(nextData);
+
+    const at = await AccountType.findByPk(nextData.accountTypeId);
+    if (!at) {
+      const err = new Error('Account type not found');
+      err.status = 404;
+      throw err;
+    }
+
+    const pt = await PaymentType.findByPk(nextData.paymentTypeId);
+    if (!pt) {
+      const err = new Error('Payment type not found');
+      err.status = 404;
+      throw err;
+    }
+
+    await acc.update({
+      accountTypeId: nextData.accountTypeId,
+      nominalDate: nextData.nominalDate,
+      dueDate: nextData.dueDate,
+      paymentDate: nextData.paymentDate,
+      paymentTypeId: nextData.paymentTypeId,
+      documentNumber: nextData.documentNumber,
+      description: String(nextData.description).trim(),
+      value: nextData.value,
+      originId: nextData.originId
     });
 
     return acc;
@@ -253,7 +287,7 @@ class AccountsReceivableService {
     }
 
     if (acc.paid) {
-      const err = new Error('Received receivables cannot be deleted. Please unreceive first.');
+      const err = new Error('Conta recebida não pode ser removida. Desmarque a conta como recebida antes de excluir.');
       err.status = 400;
       throw err;
     }
@@ -309,7 +343,6 @@ class AccountsReceivableService {
 
     acc.paid = false;
     acc.paymentDate = null;
-    acc.paymentTypeId = null;
 
     await acc.save();
     return acc;

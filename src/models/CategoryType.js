@@ -24,9 +24,16 @@ const CategoryType = sequelize.define(
     },
 
     specie: {
-      type: DataTypes.BOOLEAN,
+      type: DataTypes.STRING(30),
       allowNull: true,
       field: 'Especie'
+    },
+
+    status: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true,
+      field: 'Status_Categoria'
     }
   },
   {
