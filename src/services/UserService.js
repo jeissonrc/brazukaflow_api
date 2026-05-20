@@ -103,7 +103,7 @@ class UserService {
     });
 
     if (!user) {
-      const error = new Error("Invalid username or password");
+      const error = new Error("Usuário ou senha inválidos.");
       error.status = 401;
       throw error;
     }
@@ -111,13 +111,13 @@ class UserService {
     const match = await bcrypt.compare(password, user.password);
 
     if (!match) {
-      const error = new Error("Invalid username or password");
+      const error = new Error("Usuário ou senha inválidos.");
       error.status = 401;
       throw error;
     }
 
     if (Number(user.active) !== 1) {
-      const error = new Error("Inactive user");
+      const error = new Error("Usuário inativo. Entre em contato com o administrador.");
       error.status = 403;
       throw error;
     }
