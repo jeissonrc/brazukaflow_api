@@ -3,7 +3,10 @@ const PaymentTypeService = require('../services/PaymentTypeService');
 class PaymentTypeController {
   async index(req, res, next) {
     try {
-      const payments = await PaymentTypeService.getAll();
+      const hasPagination = req.query.page || req.query.limit;
+      const payments = hasPagination
+        ? await PaymentTypeService.getPaginated(req.query)
+        : await PaymentTypeService.getAll();
       res.status(200);
       return res.json(payments);
     } catch (err) {

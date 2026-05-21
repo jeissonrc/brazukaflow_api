@@ -3,7 +3,10 @@ const IncomeService = require('../services/IncomeService');
 class IncomeController {
   async index(req, res, next) {
     try {
-      const data = await IncomeService.getAll();
+      const hasPagination = req.query.page || req.query.limit;
+      const data = hasPagination
+        ? await IncomeService.getPaginated(req.query)
+        : await IncomeService.getAll();
       res.status(200).json(data);
     } catch (err) {
       next(err);

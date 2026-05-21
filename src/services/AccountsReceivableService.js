@@ -40,23 +40,170 @@ const validateRequiredReceivableFields = (data) => {
   }
 };
 
+const includeReceivableRelations = [
+  { model: AccountType, as: 'accountType', include: [{ model: CategoryType, as: 'category' }] },
+  { model: PaymentType, as: 'paymentType' }
+];
+
+const getReceivableStatus = (account) => {
+  if (account.paid) return 'recebido';
+
+  const dueDate = normalizeDateOnly(account.dueDate);
+  const today = normalizeDateOnly(new Date());
+
+  if (dueDate && dueDate < today) return 'vencido';
+  return 'pendente';
+};
+
+const getPaginationNumber = (value, fallback, { min = 1, max = 1000 } = {}) => {
+  const number = Number(value);
+  if (!Number.isInteger(number)) return fallback;
+  return Math.min(Math.max(number, min), max);
+};
+
 class AccountsReceivableService {
 
   async getAll() {
     return await AccountsReceivable.findAll({
-      include: [
-        { model: AccountType, as: 'accountType', include: [{ model: CategoryType, as: 'category' }] },
-        { model: PaymentType, as: 'paymentType' }
-      ]
+      include: includeReceivableRelations
     });
+  }
+
+  async getPaginated(filters = {}) {
+    const page = getPaginationNumber(filters.page, 1);
+    const limit = getPaginationNumber(filters.limit, 10, { min: 1, max: 100 });
+    const offset = (page - 1) * limit;
+    const where = {};
+    const include = includeReceivableRelations;
+    const today = normalizeDateOnly(new Date());
+
+    if (filters.status === 'recebido') {
+      where.paid = true;
+    }
+
+    if (filters.status === 'pendente') {
+      where.paid = false;
+      where[Op.or] = [
+        { dueDate: { [Op.gte]: today } },
+        { dueDate: null }
+      ];
+    }
+
+    if (filters.status === 'vencido') {
+      where.paid = false;
+      where.dueDate = { [Op.lt]: today };
+    }
+
+    if (filters.paymentTypeId && filters.paymentTypeId !== 'todos') {
+      where.paymentTypeId = filters.paymentTypeId;
+    }
+
+    if (filters.accountTypeId && filters.accountTypeId !== 'todos') {
+      where.accountTypeId = filters.accountTypeId;
+    }
+
+    if (filters.originId && filters.originId !== 'todas') {
+      where.originId = filters.originId;
+    }
+
+    if (filters.dateFrom || filters.dateTo) {
+      where.dueDate = {
+        ...(where.dueDate && typeof where.dueDate === 'object' ? where.dueDate : {}),
+        ...(filters.dateFrom ? { [Op.gte]: filters.dateFrom } : {}),
+        ...(filters.dateTo ? { [Op.lte]: filters.dateTo } : {})
+      };
+    }
+
+    if (filters.search && String(filters.search).trim()) {
+      const search = String(filters.search).trim();
+      const originMatches = await OriginAccount.findAll({
+        attributes: ['id'],
+        where: {
+          description: { [Op.like]: `%${search}%` }
+        }
+      });
+      const originIds = originMatches.map((origin) => origin.id);
+
+      const searchConditions = [
+        { description: { [Op.like]: `%${search}%` } },
+        { documentNumber: { [Op.like]: `%${search}%` } },
+        { '$accountType.description$': { [Op.like]: `%${search}%` } },
+        { '$paymentType.name$': { [Op.like]: `%${search}%` } }
+      ];
+
+      if (originIds.length > 0) {
+        searchConditions.push({ originId: { [Op.in]: originIds } });
+      }
+
+      where[Op.and] = [
+        ...(where[Op.and] || []),
+        { [Op.or]: searchConditions }
+      ];
+    }
+
+    const orderMap = {
+      id: ['id'],
+      descricao: ['description'],
+      dataVencimento: ['dueDate'],
+      valor: ['value'],
+      status: ['paid']
+    };
+    const orderColumn = orderMap[filters.sortBy] || ['dueDate'];
+    const orderDirection = String(filters.sortDirection || 'asc').toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
+    const order = filters.sortBy === 'status'
+      ? [['paid', orderDirection], ['dueDate', orderDirection]]
+      : [[...orderColumn, orderDirection]];
+
+    const { rows, count } = await AccountsReceivable.findAndCountAll({
+      where,
+      include,
+      order,
+      limit,
+      offset,
+      distinct: true,
+      subQuery: false
+    });
+
+    const summaryRows = await AccountsReceivable.findAll({
+      where,
+      include,
+      attributes: ['paid', 'dueDate', 'value'],
+      subQuery: false
+    });
+
+    const summary = summaryRows.reduce(
+      (acc, account) => {
+        const value = Number(account.value || 0);
+        const status = getReceivableStatus(account);
+
+        acc.total += value;
+        acc[status].valor += value;
+        acc[status].quantidade += 1;
+        return acc;
+      },
+      {
+        total: 0,
+        pendente: { valor: 0, quantidade: 0 },
+        recebido: { valor: 0, quantidade: 0 },
+        vencido: { valor: 0, quantidade: 0 }
+      }
+    );
+
+    return {
+      items: rows,
+      pagination: {
+        page,
+        limit,
+        total: count,
+        totalPages: Math.max(1, Math.ceil(count / limit))
+      },
+      summary
+    };
   }
 
   async getOne(id) {
     return await AccountsReceivable.findByPk(id, {
-      include: [
-        { model: AccountType, as: 'accountType', include: [{ model: CategoryType, as: 'category' }] },
-        { model: PaymentType, as: 'paymentType' }
-      ]
+      include: includeReceivableRelations
     });
   }
 

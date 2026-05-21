@@ -1,15 +1,133 @@
 const AccountType = require('../models/AccountType');
+const CategoryType = require('../models/CategoryType');
+const { Op } = require('sequelize');
+
+const includeAccountTypeRelations = [{ model: CategoryType, as: 'category' }];
+
+const getPaginationNumber = (value, fallback, { min = 1, max = 1000 } = {}) => {
+  const number = Number(value);
+  if (!Number.isInteger(number)) return fallback;
+  return Math.min(Math.max(number, min), max);
+};
+
+const isActiveStatus = (status) => status === true || status === 1 || status === '1' || status === 'true';
 
 class AccountTypeService {
   async getAll() {
     return await AccountType.findAll({
-      include: ['category']
+      include: includeAccountTypeRelations
     });
+  }
+
+  async getPaginated(filters = {}) {
+    const page = getPaginationNumber(filters.page, 1);
+    const limit = getPaginationNumber(filters.limit, 10, { min: 1, max: 100 });
+    const offset = (page - 1) * limit;
+    const where = {};
+    const include = includeAccountTypeRelations;
+
+    if (filters.type && filters.type !== 'Todos') {
+      where.type = filters.type;
+    }
+
+    if (filters.status === 'Ativo') {
+      where.status = true;
+    }
+
+    if (filters.status === 'Inativo') {
+      where.status = false;
+    }
+
+    if (filters.categoryId && filters.categoryId !== 'Todas') {
+      where.categoryId = filters.categoryId;
+    }
+
+    if (filters.search && String(filters.search).trim()) {
+      const search = String(filters.search).trim();
+      where[Op.and] = [
+        ...(where[Op.and] || []),
+        {
+          [Op.or]: [
+            { description: { [Op.like]: `%${search}%` } },
+            { specie: { [Op.like]: `%${search}%` } },
+            { '$category.description$': { [Op.like]: `%${search}%` } }
+          ]
+        }
+      ];
+
+      const idMatch = String(search).match(/^TC-(\d+)$/i);
+      const numericSearch = idMatch ? Number(idMatch[1]) : Number(search);
+
+      if (Number.isInteger(numericSearch) && numericSearch > 0) {
+        where[Op.and][0][Op.or].push({ id: numericSearch });
+      }
+    }
+
+    const orderDirection = String(filters.sortDirection || 'asc').toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
+    let order;
+
+    if (filters.sortBy === 'categoria') {
+      order = [[{ model: CategoryType, as: 'category' }, 'description', orderDirection]];
+    } else {
+      const orderMap = {
+        idTipo: 'id',
+        descricao: 'description',
+        tipo: 'type',
+        especie: 'specie',
+        status: 'status'
+      };
+      order = [[orderMap[filters.sortBy] || 'id', orderDirection]];
+    }
+
+    const { rows, count } = await AccountType.findAndCountAll({
+      where,
+      include,
+      order,
+      limit,
+      offset,
+      distinct: true,
+      subQuery: false
+    });
+
+    const summaryRows = await AccountType.findAll({
+      where,
+      include,
+      attributes: ['status', 'type'],
+      subQuery: false
+    });
+
+    const summary = summaryRows.reduce(
+      (acc, accountType) => {
+        acc.total += 1;
+        if (isActiveStatus(accountType.status)) {
+          acc.ativos += 1;
+        }
+        if (accountType.type === 'Receita') {
+          acc.receitas += 1;
+        }
+        if (accountType.type === 'Despesa') {
+          acc.despesas += 1;
+        }
+        return acc;
+      },
+      { total: 0, ativos: 0, receitas: 0, despesas: 0 }
+    );
+
+    return {
+      items: rows,
+      pagination: {
+        page,
+        limit,
+        total: count,
+        totalPages: Math.max(1, Math.ceil(count / limit))
+      },
+      summary
+    };
   }
 
   async getOne(id) {
     return await AccountType.findByPk(id, {
-      include: ['category']
+      include: includeAccountTypeRelations
     });
   }
 

@@ -3,7 +3,10 @@ const ExpenseService = require('../services/ExpenseService');
 class ExpenseController {
   async index(req, res, next) {
     try {
-      const data = await ExpenseService.getAll();
+      const hasPagination = req.query.page || req.query.limit;
+      const data = hasPagination
+        ? await ExpenseService.getPaginated(req.query)
+        : await ExpenseService.getAll();
       res.status(200).json(data);
     } catch (err) {
       next(err);

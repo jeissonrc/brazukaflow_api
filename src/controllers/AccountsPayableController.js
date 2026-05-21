@@ -4,7 +4,10 @@ class AccountsPayableController {
 
   async index(req, res, next) {
     try {
-      const data = await AccountsPayableService.getAll();
+      const hasPagination = req.query.page || req.query.limit;
+      const data = hasPagination
+        ? await AccountsPayableService.getPaginated(req.query)
+        : await AccountsPayableService.getAll();
       res.status(200).json(data);
     } catch (err) {
       next(err);

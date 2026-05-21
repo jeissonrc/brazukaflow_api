@@ -3,7 +3,10 @@ const CategoryTypeService = require('../services/CategoryTypeService');
 class CategoryTypeController {
   async index(req, res, next) {
     try {
-      const categories = await CategoryTypeService.getAll();
+      const hasPagination = req.query.page || req.query.limit;
+      const categories = hasPagination
+        ? await CategoryTypeService.getPaginated(req.query)
+        : await CategoryTypeService.getAll();
       res.status(200);
       return res.json(categories);
     } catch (err) {

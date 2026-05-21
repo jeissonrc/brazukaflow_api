@@ -3,7 +3,10 @@ const AccountTypeService = require('../services/AccountTypeService');
 class AccountTypeController {
   async index(req, res, next) {
     try {
-      const accounts = await AccountTypeService.getAll();
+      const hasPagination = req.query.page || req.query.limit;
+      const accounts = hasPagination
+        ? await AccountTypeService.getPaginated(req.query)
+        : await AccountTypeService.getAll();
       res.status(200);
       return res.json(accounts);
     } catch (err) {

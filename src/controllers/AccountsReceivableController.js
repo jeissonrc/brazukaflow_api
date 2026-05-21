@@ -4,7 +4,10 @@ class AccountsReceivableController {
 
   async index(req, res, next) {
     try {
-      const data = await AccountsReceivableService.getAll();
+      const hasPagination = req.query.page || req.query.limit;
+      const data = hasPagination
+        ? await AccountsReceivableService.getPaginated(req.query)
+        : await AccountsReceivableService.getAll();
       res.status(200).json(data);
     } catch (err) {
       next(err);

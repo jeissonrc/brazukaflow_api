@@ -4,7 +4,10 @@ class UserController {
 
   async index(req, res, next) {
     try {
-      const users = await UserService.getAll();
+      const hasPagination = req.query.page || req.query.limit;
+      const users = hasPagination
+        ? await UserService.getPaginated(req.query)
+        : await UserService.getAll();
       return res.status(200).json(users);
     } catch (err) {
       next(err);
@@ -38,7 +41,7 @@ class UserController {
 
   async update(req, res, next) {
     try {
-      const user = await UserService.update(req.params.id, req.body);
+      const user = await UserService.update(req.params.id, req.body, req.user);
       return res.status(200).json(user);
     } catch (err) {
       next(err);
@@ -47,7 +50,7 @@ class UserController {
 
   async delete(req, res, next) {
     try {
-      const result = await UserService.delete(req.params.id);
+      const result = await UserService.delete(req.params.id, req.user);
       return res.status(200).json(result);
     } catch (err) {
       next(err);
