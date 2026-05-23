@@ -116,23 +116,45 @@ class AccountsReceivableService {
 
     if (filters.search && String(filters.search).trim()) {
       const search = String(filters.search).trim();
-      const originMatches = await OriginAccount.findAll({
-        attributes: ['id'],
-        where: {
-          description: { [Op.like]: `%${search}%` }
-        }
-      });
+      const [originMatches, accountTypeMatches, paymentTypeMatches] = await Promise.all([
+        OriginAccount.findAll({
+          attributes: ['id'],
+          where: {
+            description: { [Op.like]: `%${search}%` }
+          }
+        }),
+        AccountType.findAll({
+          attributes: ['id'],
+          where: {
+            description: { [Op.like]: `%${search}%` }
+          }
+        }),
+        PaymentType.findAll({
+          attributes: ['id'],
+          where: {
+            name: { [Op.like]: `%${search}%` }
+          }
+        })
+      ]);
       const originIds = originMatches.map((origin) => origin.id);
+      const accountTypeIds = accountTypeMatches.map((accountType) => accountType.id);
+      const paymentTypeIds = paymentTypeMatches.map((paymentType) => paymentType.id);
 
       const searchConditions = [
         { description: { [Op.like]: `%${search}%` } },
-        { documentNumber: { [Op.like]: `%${search}%` } },
-        { '$accountType.description$': { [Op.like]: `%${search}%` } },
-        { '$paymentType.name$': { [Op.like]: `%${search}%` } }
+        { documentNumber: { [Op.like]: `%${search}%` } }
       ];
 
       if (originIds.length > 0) {
         searchConditions.push({ originId: { [Op.in]: originIds } });
+      }
+
+      if (accountTypeIds.length > 0) {
+        searchConditions.push({ accountTypeId: { [Op.in]: accountTypeIds } });
+      }
+
+      if (paymentTypeIds.length > 0) {
+        searchConditions.push({ paymentTypeId: { [Op.in]: paymentTypeIds } });
       }
 
       where[Op.and] = [
@@ -154,21 +176,21 @@ class AccountsReceivableService {
       ? [['paid', orderDirection], ['dueDate', orderDirection]]
       : [[...orderColumn, orderDirection]];
 
-    const { rows, count } = await AccountsReceivable.findAndCountAll({
+    const count = await AccountsReceivable.count({
+      where
+    });
+
+    const rows = await AccountsReceivable.findAll({
       where,
       include,
       order,
       limit,
-      offset,
-      distinct: true,
-      subQuery: false
+      offset
     });
 
     const summaryRows = await AccountsReceivable.findAll({
       where,
-      include,
-      attributes: ['paid', 'dueDate', 'value'],
-      subQuery: false
+      attributes: ['paid', 'dueDate', 'value']
     });
 
     const summary = summaryRows.reduce(

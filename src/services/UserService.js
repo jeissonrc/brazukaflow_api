@@ -78,10 +78,24 @@ class UserService {
 
     if (filters.search && String(filters.search).trim()) {
       const search = String(filters.search).trim();
-      where[Op.or] = [
+      const profileMatches = await Profile.findAll({
+        attributes: ['id'],
+        where: {
+          name: { [Op.like]: `%${search}%` }
+        }
+      });
+      const profileIds = profileMatches.map((profile) => profile.id);
+      const searchConditions = [
         { name: { [Op.like]: `%${search}%` } },
-        { username: { [Op.like]: `%${search}%` } },
-        { '$profile.name$': { [Op.like]: `%${search}%` } }
+        { username: { [Op.like]: `%${search}%` } }
+      ];
+
+      if (profileIds.length > 0) {
+        searchConditions.push({ profileId: { [Op.in]: profileIds } });
+      }
+
+      where[Op.or] = [
+        ...searchConditions
       ];
     }
 
@@ -100,22 +114,23 @@ class UserService {
       order = [[orderMap[filters.sortBy] || 'name', orderDirection]];
     }
 
-    const { rows, count } = await User.findAndCountAll({
+    const count = await User.count({
+      where
+    });
+
+    const rows = await User.findAll({
       where,
       include,
       attributes: { exclude: ['password'] },
       order,
       limit,
-      offset,
-      distinct: true,
-      subQuery: false
+      offset
     });
 
     const summaryRows = await User.findAll({
       where,
       include,
-      attributes: ['active'],
-      subQuery: false
+      attributes: ['active']
     });
 
     const summary = summaryRows.reduce(

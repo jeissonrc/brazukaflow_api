@@ -44,22 +44,32 @@ class AccountTypeService {
 
     if (filters.search && String(filters.search).trim()) {
       const search = String(filters.search).trim();
+      const categoryMatches = await CategoryType.findAll({
+        attributes: ['id'],
+        where: {
+          description: { [Op.like]: `%${search}%` }
+        }
+      });
+      const categoryIds = categoryMatches.map((category) => category.id);
+      const searchConditions = [
+        { description: { [Op.like]: `%${search}%` } },
+        { specie: { [Op.like]: `%${search}%` } }
+      ];
+
+      if (categoryIds.length > 0) {
+        searchConditions.push({ categoryId: { [Op.in]: categoryIds } });
+      }
+
       where[Op.and] = [
         ...(where[Op.and] || []),
-        {
-          [Op.or]: [
-            { description: { [Op.like]: `%${search}%` } },
-            { specie: { [Op.like]: `%${search}%` } },
-            { '$category.description$': { [Op.like]: `%${search}%` } }
-          ]
-        }
+        { [Op.or]: searchConditions }
       ];
 
       const idMatch = String(search).match(/^TC-(\d+)$/i);
       const numericSearch = idMatch ? Number(idMatch[1]) : Number(search);
 
       if (Number.isInteger(numericSearch) && numericSearch > 0) {
-        where[Op.and][0][Op.or].push({ id: numericSearch });
+        searchConditions.push({ id: numericSearch });
       }
     }
 
@@ -79,21 +89,21 @@ class AccountTypeService {
       order = [[orderMap[filters.sortBy] || 'id', orderDirection]];
     }
 
-    const { rows, count } = await AccountType.findAndCountAll({
+    const count = await AccountType.count({
+      where
+    });
+
+    const rows = await AccountType.findAll({
       where,
       include,
       order,
       limit,
-      offset,
-      distinct: true,
-      subQuery: false
+      offset
     });
 
     const summaryRows = await AccountType.findAll({
       where,
-      include,
-      attributes: ['status', 'type'],
-      subQuery: false
+      attributes: ['status', 'type']
     });
 
     const summary = summaryRows.reduce(

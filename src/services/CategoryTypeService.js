@@ -67,7 +67,11 @@ class CategoryTypeService {
     const orderDirection = String(filters.sortDirection || 'asc').toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
     const order = [[orderMap[filters.sortBy] || 'id', orderDirection]];
 
-    const { rows, count } = await CategoryType.findAndCountAll({
+    const count = await CategoryType.count({
+      where
+    });
+
+    const rows = await CategoryType.findAll({
       where,
       order,
       limit,

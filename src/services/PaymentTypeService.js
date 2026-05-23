@@ -49,7 +49,11 @@ class PaymentTypeService {
     const orderDirection = String(filters.sortDirection || 'asc').toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
     const order = [[orderMap[filters.sortBy] || 'id', orderDirection]];
 
-    const { rows, count } = await PaymentType.findAndCountAll({
+    const count = await PaymentType.count({
+      where
+    });
+
+    const rows = await PaymentType.findAll({
       where,
       order,
       limit,

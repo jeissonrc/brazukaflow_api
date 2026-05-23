@@ -70,16 +70,47 @@ class IncomeService {
 
     if (filters.search && String(filters.search).trim()) {
       const search = String(filters.search).trim();
+      const categoryMatches = await CategoryType.findAll({
+        attributes: ['id'],
+        where: {
+          description: { [Op.like]: `%${search}%` }
+        }
+      });
+      const categoryIds = categoryMatches.map((category) => category.id);
+      const [accountTypeMatches, cashAccountMatches] = await Promise.all([
+        AccountType.findAll({
+          attributes: ['id'],
+          where: {
+            [Op.or]: [
+              { description: { [Op.like]: `%${search}%` } },
+              ...(categoryIds.length > 0 ? [{ categoryId: { [Op.in]: categoryIds } }] : [])
+            ]
+          }
+        }),
+        CashAccount.findAll({
+          attributes: ['id'],
+          where: {
+            name: { [Op.like]: `%${search}%` }
+          }
+        })
+      ]);
+      const accountTypeIds = accountTypeMatches.map((accountType) => accountType.id);
+      const cashAccountIds = cashAccountMatches.map((cashAccount) => cashAccount.id);
+      const searchConditions = [
+        { description: { [Op.like]: `%${search}%` } }
+      ];
+
+      if (accountTypeIds.length > 0) {
+        searchConditions.push({ accountTypeId: { [Op.in]: accountTypeIds } });
+      }
+
+      if (cashAccountIds.length > 0) {
+        searchConditions.push({ cashAccountId: { [Op.in]: cashAccountIds } });
+      }
+
       where[Op.and] = [
         ...(where[Op.and] || []),
-        {
-          [Op.or]: [
-            { description: { [Op.like]: `%${search}%` } },
-            { '$accountType.description$': { [Op.like]: `%${search}%` } },
-            { '$accountType.category.description$': { [Op.like]: `%${search}%` } },
-            { '$cashAccount.name$': { [Op.like]: `%${search}%` } }
-          ]
-        }
+        { [Op.or]: searchConditions }
       ];
     }
 
@@ -100,21 +131,21 @@ class IncomeService {
       order = [[orderMap[filters.sortBy] || 'incomeDate', orderDirection]];
     }
 
-    const { rows, count } = await Income.findAndCountAll({
+    const count = await Income.count({
+      where
+    });
+
+    const rows = await Income.findAll({
       where,
       include,
       order,
       limit,
-      offset,
-      distinct: true,
-      subQuery: false
+      offset
     });
 
     const summaryRows = await Income.findAll({
       where,
-      include,
-      attributes: ['incomeDate', 'value'],
-      subQuery: false
+      attributes: ['incomeDate', 'value']
     });
 
     const currentMonth = new Date().getMonth() + 1;
