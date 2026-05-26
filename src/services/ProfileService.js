@@ -1,9 +1,15 @@
 const Profile = require('../models/Profile');
+const { PROFILE_IDS } = require('../constants/profileIds');
 
 class ProfileService {
 
   async getAll() {
-    return await Profile.findAll();
+    return await Profile.findAll({
+      where: {
+        id: [PROFILE_IDS.ADMIN, PROFILE_IDS.OPERATIONAL]
+      },
+      order: [['id', 'ASC']]
+    });
   }
 
   async getOne(id) {

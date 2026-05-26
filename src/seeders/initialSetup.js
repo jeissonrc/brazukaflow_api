@@ -1,5 +1,5 @@
 const bcrypt = require('bcrypt');
-const { DataTypes } = require('sequelize');
+const { DataTypes, Op } = require('sequelize');
 const sequelize = require('../config/database');
 const User = require('../models/User');
 const Profile = require('../models/Profile');
@@ -9,8 +9,27 @@ const AccountType = require('../models/AccountType');
 const CashAccount = require('../models/CashAccount');
 const Income = require('../models/Income');
 const Expense = require('../models/Expense');
+require('../models/AuditLog');
+const { PROFILE_IDS } = require('../constants/profileIds');
 
 const SALT_ROUNDS = 10;
+const SYSTEM_PROFILES = [
+  {
+    id: PROFILE_IDS.SUPER_ADMIN,
+    name: 'Super Admin',
+    description: 'Perfil técnico com acesso total ao sistema'
+  },
+  {
+    id: PROFILE_IDS.ADMIN,
+    name: 'Administrador',
+    description: 'Perfil administrador do sistema'
+  },
+  {
+    id: PROFILE_IDS.OPERATIONAL,
+    name: 'Operacional',
+    description: 'Perfil operacional do sistema'
+  }
+];
 
 async function ensureAccountPlanSchema() {
   const queryInterface = sequelize.getQueryInterface();
@@ -64,60 +83,190 @@ async function ensureAccountPlanSchema() {
   }
 }
 
+async function ensureAuditLogSchema() {
+  const queryInterface = sequelize.getQueryInterface();
+  const tables = await queryInterface.showAllTables();
+  const hasAuditLogTable = tables.some((table) => {
+    const tableName = typeof table === 'string' ? table : table.tableName;
+    return tableName === 'logs_sistema';
+  });
+
+  if (!hasAuditLogTable) {
+    await queryInterface.createTable('logs_sistema', {
+      ID_Log: {
+        type: DataTypes.INTEGER.UNSIGNED,
+        primaryKey: true,
+        autoIncrement: true,
+        allowNull: false
+      },
+      Data_Hora: {
+        type: DataTypes.DATE,
+        allowNull: false,
+        defaultValue: DataTypes.NOW
+      },
+      ID_Usuario: {
+        type: DataTypes.INTEGER.UNSIGNED,
+        allowNull: true
+      },
+      Login: {
+        type: DataTypes.STRING(30),
+        allowNull: true
+      },
+      Nome_Usuario: {
+        type: DataTypes.STRING(80),
+        allowNull: true
+      },
+      Perfil: {
+        type: DataTypes.STRING(50),
+        allowNull: true
+      },
+      Acao: {
+        type: DataTypes.STRING(40),
+        allowNull: false
+      },
+      Modulo: {
+        type: DataTypes.STRING(60),
+        allowNull: false
+      },
+      Descricao: {
+        type: DataTypes.STRING(255),
+        allowNull: true
+      },
+      Status: {
+        type: DataTypes.STRING(20),
+        allowNull: true
+      },
+      IP: {
+        type: DataTypes.STRING(60),
+        allowNull: true
+      },
+      Metodo: {
+        type: DataTypes.STRING(10),
+        allowNull: true
+      },
+      Rota: {
+        type: DataTypes.STRING(255),
+        allowNull: true
+      },
+      Dados_Antes: {
+        type: DataTypes.TEXT('long'),
+        allowNull: true
+      },
+      Dados_Depois: {
+        type: DataTypes.TEXT('long'),
+        allowNull: true
+      }
+    });
+
+    return;
+  }
+
+  const columns = await queryInterface.describeTable('logs_sistema');
+  const requiredColumns = {
+    Data_Hora: { type: DataTypes.DATE, allowNull: false, defaultValue: DataTypes.NOW },
+    ID_Usuario: { type: DataTypes.INTEGER.UNSIGNED, allowNull: true },
+    Login: { type: DataTypes.STRING(30), allowNull: true },
+    Nome_Usuario: { type: DataTypes.STRING(80), allowNull: true },
+    Perfil: { type: DataTypes.STRING(50), allowNull: true },
+    Acao: { type: DataTypes.STRING(40), allowNull: false },
+    Modulo: { type: DataTypes.STRING(60), allowNull: false },
+    Descricao: { type: DataTypes.STRING(255), allowNull: true },
+    Status: { type: DataTypes.STRING(20), allowNull: true },
+    IP: { type: DataTypes.STRING(60), allowNull: true },
+    Metodo: { type: DataTypes.STRING(10), allowNull: true },
+    Rota: { type: DataTypes.STRING(255), allowNull: true },
+    Dados_Antes: { type: DataTypes.TEXT('long'), allowNull: true },
+    Dados_Depois: { type: DataTypes.TEXT('long'), allowNull: true }
+  };
+
+  for (const [columnName, definition] of Object.entries(requiredColumns)) {
+    if (!columns[columnName]) {
+      await queryInterface.addColumn('logs_sistema', columnName, definition);
+    }
+  }
+}
+
+async function ensureSystemProfiles() {
+  const profiles = await Profile.findAll();
+  const superProfile = profiles.find((profile) => {
+    const name = String(profile.name || '').toLowerCase();
+    return name.includes('super');
+  });
+  const adminProfile = profiles.find((profile) => {
+    const name = String(profile.name || '').toLowerCase();
+    return (name.includes('admin') || name.includes('administrador') || name.includes('master')) && !name.includes('super');
+  });
+  const operationalProfile = profiles.find((profile) => {
+    const name = String(profile.name || '').toLowerCase();
+    return name.includes('operacional') || name.includes('comum');
+  });
+
+  const profileIdMap = [
+    [superProfile?.id, PROFILE_IDS.SUPER_ADMIN],
+    [adminProfile?.id, PROFILE_IDS.ADMIN],
+    [operationalProfile?.id, PROFILE_IDS.OPERATIONAL]
+  ].filter(([fromId, toId]) => fromId && Number(fromId) !== Number(toId));
+
+  await sequelize.query('SET FOREIGN_KEY_CHECKS = 0');
+
+  if (profileIdMap.length > 0) {
+    const caseStatements = profileIdMap
+      .map(([fromId, toId]) => `WHEN ${Number(fromId)} THEN ${Number(toId)}`)
+      .join(' ');
+    const sourceIds = profileIdMap.map(([fromId]) => Number(fromId)).join(', ');
+
+    await sequelize.query(`
+      UPDATE usuarios
+      SET ID_Perfil = CASE ID_Perfil ${caseStatements} ELSE ID_Perfil END
+      WHERE ID_Perfil IN (${sourceIds})
+    `);
+  }
+
+  await Profile.destroy({
+    where: {
+      [Op.or]: [
+        { id: { [Op.in]: SYSTEM_PROFILES.map((profile) => profile.id) } },
+        { name: { [Op.in]: ['Super Admin', 'Administrador', 'Administrador Master', 'Usuário Operacional', 'Usuário Comum', 'Operacional'] } }
+      ]
+    }
+  });
+
+  for (const profile of SYSTEM_PROFILES) {
+    await Profile.create({
+      id: profile.id,
+      name: profile.name,
+      description: profile.description,
+      statusProfile: 1
+    });
+  }
+
+  await sequelize.query('ALTER TABLE perfis AUTO_INCREMENT = 4');
+  await sequelize.query('SET FOREIGN_KEY_CHECKS = 1');
+
+  return {
+    superAdminProfile: await Profile.findByPk(PROFILE_IDS.SUPER_ADMIN),
+    adminProfile: await Profile.findByPk(PROFILE_IDS.ADMIN),
+    operationalProfile: await Profile.findByPk(PROFILE_IDS.OPERATIONAL)
+  };
+}
+
 async function init() {
   try {
     await ensureAccountPlanSchema();
+    await ensureAuditLogSchema();
 
     // ---------- 1. Criar perfis padrões ----------
-    let adminProfile = await Profile.findOne({ where: { name: 'Administrador Master' } });
-    if (!adminProfile) {
-      adminProfile = await Profile.create({
-        name: 'Administrador Master',
-        description: 'Perfil Administrador Master do Sistema',
-        statusProfile: 1
-      });
-      console.log('Perfil admin padrão criado!');
-    }
-
-    let commonProfile = await Profile.findOne({ where: { name: 'Usuário Comum' } });
-    if (!commonProfile) {
-      commonProfile = await Profile.create({
-        name: 'Usuário Comum',
-        description: 'Perfil padrão de usuário comum',
-        statusProfile: 1
-      });
-      console.log('Perfil comum padrão criado!');
-    }
+    const { superAdminProfile } = await ensureSystemProfiles();
+    console.log('Perfis padrão sincronizados!');
 
     // ---------- 2. Criar usuários padrões ----------
     const defaultUsers = [
       {
-        username: 'admin',
-        name: 'Administrador',
+        username: 'superadmin',
+        name: 'Super Admin',
         password: '123456',
         active: 1,
-        profileId: adminProfile.id
-      },
-      {
-        username: 'carlos',
-        name: 'Carlos Silva',
-        password: '123456',
-        active: 1,
-        profileId: commonProfile.id
-      },
-      {
-        username: 'maria',
-        name: 'Maria Santos',
-        password: '123456',
-        active: 1,
-        profileId: commonProfile.id
-      },
-      {
-        username: 'joao',
-        name: 'João Oliveira',
-        password: '123456',
-        active: 0,
-        profileId: commonProfile.id
+        profileId: superAdminProfile.id
       }
     ];
 

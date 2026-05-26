@@ -2,7 +2,8 @@ const User = require('../models/User');
 const Profile = require('../models/Profile');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-const { Op } = require('sequelize');
+const { Op, literal } = require('sequelize');
+const { PROFILE_IDS, USER_ROLES, getRoleByProfileId } = require('../constants/profileIds');
 
 const JWT_SECRET = "sua_chave_secreta_aqui"; // trocar por variável de ambiente
 const SALT_ROUNDS = 10;
@@ -14,12 +15,11 @@ const getPaginationNumber = (value, fallback, { min = 1, max = 1000 } = {}) => {
   return Math.min(Math.max(number, min), max);
 };
 
-const getUserRole = (user) => {
-  const profileName = user.profile?.name || '';
-  return profileName.toLowerCase().includes('admin') ? 'admin' : 'comum';
-};
+const getUserRole = (user) => getRoleByProfileId(user?.profileId ?? user?.profile?.id);
 
-const isAdminUser = (user) => getUserRole(user) === 'admin';
+const isSuperAdminUser = (user) => getUserRole(user) === USER_ROLES.SUPER_ADMIN;
+const isRegularAdminUser = (user) => getUserRole(user) === USER_ROLES.ADMIN;
+const isAdminUser = (user) => [USER_ROLES.SUPER_ADMIN, USER_ROLES.ADMIN].includes(getUserRole(user));
 
 const getUserWithProfile = async (id) => {
   return await User.findByPk(id, {
@@ -28,53 +28,76 @@ const getUserWithProfile = async (id) => {
   });
 };
 
+const createError = (message, status = 400) => {
+  const error = new Error(message);
+  error.status = status;
+  return error;
+};
+
 const ensureAdminRequester = async (requesterId) => {
   const requester = await getUserWithProfile(requesterId);
 
   if (!requester || !isAdminUser(requester)) {
-    const error = new Error("Apenas usuários administradores podem remover usuários.");
-    error.status = 403;
-    throw error;
+    throw createError("Apenas usuários administradores podem gerenciar usuários.", 403);
   }
 
   return requester;
 };
 
 const countActiveAdmins = async () => {
-  const users = await User.findAll({
-    where: { active: 1 },
-    include: includeUserRelations,
-    attributes: ['id', 'active']
+  return await User.count({
+    where: {
+      active: 1,
+      profileId: PROFILE_IDS.ADMIN
+    }
   });
+};
 
-  return users.filter(isAdminUser).length;
+const countActiveUsers = async () => {
+  return await User.count({ where: { active: 1 } });
 };
 
 const getProfileRoleById = async (profileId) => {
-  if (!profileId) return 'comum';
-
-  const profile = await Profile.findByPk(profileId);
-  if (!profile) return 'comum';
-
-  return profile.name.toLowerCase().includes('admin') ? 'admin' : 'comum';
+  return getRoleByProfileId(profileId);
 };
 
 class UserService {
 
-  async getAll() {
+  async getAll(requester = null) {
+    const requesterUser = requester?.id ? await getUserWithProfile(requester.id) : null;
+    const requesterIsSuperAdmin = requesterUser && isSuperAdminUser(requesterUser);
+    const where = requester?.id && !(requesterUser && isAdminUser(requesterUser))
+      ? { id: requester.id }
+      : requesterIsSuperAdmin
+        ? {}
+        : { profileId: { [Op.ne]: PROFILE_IDS.SUPER_ADMIN } };
+
     const users = await User.findAll({
+      where,
       include: includeUserRelations,
-      attributes: { exclude: ['password'] }
+      attributes: { exclude: ['password'] },
+      order: requesterIsSuperAdmin
+        ? [[literal(`CASE WHEN User.ID_Perfil = ${PROFILE_IDS.SUPER_ADMIN} THEN 0 ELSE 1 END`), 'ASC'], ['name', 'ASC']]
+        : [['name', 'ASC']]
     });
     return users;
   }
 
-  async getPaginated(filters = {}) {
+  async getPaginated(filters = {}, requester = null) {
     const page = getPaginationNumber(filters.page, 1);
     const limit = getPaginationNumber(filters.limit, 10, { min: 1, max: 100 });
     const offset = (page - 1) * limit;
     const where = {};
     const include = includeUserRelations;
+    const requesterUser = requester?.id ? await getUserWithProfile(requester.id) : null;
+    const requesterIsAdmin = requesterUser && isAdminUser(requesterUser);
+    const requesterIsSuperAdmin = requesterUser && isSuperAdminUser(requesterUser);
+
+    if (requester?.id && !requesterIsAdmin) {
+      where.id = requester.id;
+    } else if (!requesterIsSuperAdmin) {
+      where.profileId = { [Op.ne]: PROFILE_IDS.SUPER_ADMIN };
+    }
 
     if (filters.search && String(filters.search).trim()) {
       const search = String(filters.search).trim();
@@ -114,6 +137,10 @@ class UserService {
       order = [[orderMap[filters.sortBy] || 'name', orderDirection]];
     }
 
+    if (requesterIsSuperAdmin) {
+      order = [[literal(`CASE WHEN User.ID_Perfil = ${PROFILE_IDS.SUPER_ADMIN} THEN 0 ELSE 1 END`), 'ASC'], ...order];
+    }
+
     const count = await User.count({
       where
     });
@@ -128,7 +155,11 @@ class UserService {
     });
 
     const summaryRows = await User.findAll({
-      where,
+      where: requester?.id && !requesterIsAdmin
+        ? { id: requester.id }
+        : requesterIsSuperAdmin
+          ? {}
+          : { profileId: { [Op.ne]: PROFILE_IDS.SUPER_ADMIN } },
       include,
       attributes: ['active']
     });
@@ -138,15 +169,19 @@ class UserService {
         acc.total += 1;
         if (Number(user.active) === 1) {
           acc.ativos += 1;
+          acc.activeUsers += 1;
         }
-        if (getUserRole(user) === 'admin') {
+        if (getUserRole(user) === USER_ROLES.ADMIN) {
           acc.admins += 1;
+          if (Number(user.active) === 1) {
+            acc.activeAdmins += 1;
+          }
         } else {
           acc.comuns += 1;
         }
         return acc;
       },
-      { total: 0, ativos: 0, admins: 0, comuns: 0 }
+      { total: 0, ativos: 0, admins: 0, comuns: 0, activeAdmins: 0, activeUsers: 0 }
     );
 
     return {
@@ -161,35 +196,59 @@ class UserService {
     };
   }
 
-  async getOne(id) {
+  async getOne(id, requester = null) {
+    const requesterUser = requester?.id ? await getUserWithProfile(requester.id) : null;
+
+    if (requester?.id && (!requesterUser || (!isAdminUser(requesterUser) && Number(requesterUser.id) !== Number(id)))) {
+      throw createError("Usuário operacional pode visualizar apenas a própria conta.", 403);
+    }
+
     const user = await User.findByPk(id, {
       include: includeUserRelations,
       attributes: { exclude: ['password'] }
     });
+
+    if (
+      requester?.id &&
+      user &&
+      isSuperAdminUser(user) &&
+      Number(requester.id) !== Number(user.id)
+    ) {
+      throw createError("Usuário Super Admin não pode ser visualizado por outros usuários.", 403);
+    }
+
     return user;
   }
 
-  async create(data) {
+  async create(data, requester = null) {
+    const requesterUser = await ensureAdminRequester(requester?.id);
+
     if (!data.name || !data.username || !data.password) {
-      const error = new Error("Missing required fields");
-      error.status = 400;
-      throw error;
+      throw createError("Preencha os campos obrigatórios.");
     }
 
-    // verifica se username já existe
-    const existing = await User.findOne({ where: { username: data.username } });
+    const username = String(data.username).trim();
+    const name = String(data.name).trim();
+    const password = String(data.password).trim();
+
+    if (!name || !username || !password) {
+      throw createError("Preencha os campos obrigatórios.");
+    }
+
+    const existing = await User.findOne({ where: { username } });
     if (existing) {
-      const error = new Error("Username already exists");
-      error.status = 400;
-      throw error;
+      throw createError("Já existe um usuário com este login.");
     }
 
-    // hash da senha
-    const hashedPassword = await bcrypt.hash(data.password, SALT_ROUNDS);
+    if (Number(data.profileId) === PROFILE_IDS.SUPER_ADMIN && !isSuperAdminUser(requesterUser)) {
+      throw createError("Perfil Super Admin é reservado.", 403);
+    }
+
+    const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
 
     const user = await User.create({
-      username: data.username,
-      name: data.name,
+      username,
+      name,
       password: hashedPassword,
       active: data.active ?? 1,
       profileId: data.profileId || null
@@ -205,42 +264,139 @@ class UserService {
     const user = await getUserWithProfile(id);
 
     if (!user) {
-      const error = new Error("User not found");
-      error.status = 404;
-      throw error;
+      throw createError("Usuário não encontrado.", 404);
     }
 
+    const requesterId = requester?.id;
+    const isSelf = Number(requesterId) === Number(user.id);
+    const requesterUser = await getUserWithProfile(requesterId);
+    const requesterIsAdmin = requesterUser && isAdminUser(requesterUser);
+    const requesterIsSuperAdmin = requesterUser && isSuperAdminUser(requesterUser);
     const currentRole = getUserRole(user);
+
+    if (!requesterIsAdmin) {
+      if (!isSelf) {
+        throw createError("Apenas usuários administradores podem gerenciar usuários.", 403);
+      }
+
+      const tryingToChangeLogin = data.username !== undefined && String(data.username).trim() !== user.username;
+      const tryingToChangeStatus = data.active !== undefined && Number(data.active) !== Number(user.active);
+      const tryingToChangeProfile = data.profileId !== undefined && Number(data.profileId) !== Number(user.profileId);
+
+      if (tryingToChangeLogin || tryingToChangeStatus || tryingToChangeProfile) {
+        throw createError("Usuário operacional pode alterar apenas nome e senha da própria conta.", 403);
+      }
+
+      const nextName = data.name !== undefined ? String(data.name).trim() : user.name;
+
+      if (!nextName) {
+        throw createError("Preencha os campos obrigatórios.");
+      }
+
+      const updateData = { name: nextName };
+
+      if (data.password) {
+        updateData.password = await bcrypt.hash(String(data.password).trim(), SALT_ROUNDS);
+      }
+
+      await user.update(updateData);
+
+      const result = user.toJSON();
+      delete result.password;
+
+      return result;
+    }
+
     const nextRole = data.profileId !== undefined ? await getProfileRoleById(data.profileId) : currentRole;
     const nextActive = data.active !== undefined ? Number(data.active) : Number(user.active);
 
-    if (requester && Number(requester.id) === Number(user.id) && currentRole === 'admin' && nextActive !== 1) {
-      const error = new Error("Usuário administrador não pode inativar a si mesmo.");
-      error.status = 400;
-      throw error;
+    if (currentRole === USER_ROLES.SUPER_ADMIN) {
+      const tryingToChangeLogin = data.username !== undefined && String(data.username).trim() !== user.username;
+      const tryingToChangeStatus = data.active !== undefined && Number(data.active) !== Number(user.active);
+      const tryingToChangeProfile = data.profileId !== undefined && Number(data.profileId) !== Number(user.profileId);
+
+      if (!requesterIsSuperAdmin || !isSelf || tryingToChangeLogin || tryingToChangeStatus || tryingToChangeProfile) {
+        throw createError("Usuário Super Admin não pode ser alterado pela tela.", 403);
+      }
+
+      const nextName = data.name !== undefined ? String(data.name).trim() : user.name;
+      if (!nextName) {
+        throw createError("Preencha os campos obrigatórios.");
+      }
+
+      const updateData = { name: nextName };
+      if (data.password) {
+        updateData.password = await bcrypt.hash(String(data.password).trim(), SALT_ROUNDS);
+      }
+
+      await user.update(updateData);
+
+      const result = user.toJSON();
+      delete result.password;
+
+      return result;
     }
 
-    if (currentRole === 'admin' && Number(user.active) === 1 && (nextRole !== 'admin' || nextActive !== 1)) {
+    if (nextRole === USER_ROLES.SUPER_ADMIN && !requesterIsSuperAdmin) {
+      throw createError("Perfil Super Admin é reservado.", 403);
+    }
+
+    if (isSelf && nextActive !== 1) {
+      throw createError("Usuário não pode inativar a si mesmo.");
+    }
+
+    if (currentRole === USER_ROLES.ADMIN && Number(user.active) === 1 && (nextRole !== USER_ROLES.ADMIN || nextActive !== 1)) {
       const activeAdmins = await countActiveAdmins();
 
       if (activeAdmins <= 1) {
-        const error = new Error("Não é possível remover, inativar ou alterar para comum o único usuário administrador ativo.");
-        error.status = 400;
-        throw error;
+        throw createError("Não é possível remover, inativar ou alterar para operacional o único usuário administrador ativo.");
+      }
+    }
+
+    if (Number(user.active) === 1 && nextActive !== 1) {
+      const activeUsers = await countActiveUsers();
+
+      if (activeUsers <= 1) {
+        throw createError("Não é possível inativar o único usuário ativo do sistema.");
+      }
+    }
+
+    const nextUsername = data.username !== undefined ? String(data.username).trim() : user.username;
+    const nextName = data.name !== undefined ? String(data.name).trim() : user.name;
+
+    if (!nextName || !nextUsername) {
+      throw createError("Preencha os campos obrigatórios.");
+    }
+
+    if (nextUsername !== user.username) {
+      const existing = await User.findOne({
+        where: {
+          username: nextUsername,
+          id: { [Op.ne]: user.id }
+        }
+      });
+
+      if (existing) {
+        throw createError("Já existe um usuário com este login.");
       }
     }
 
     if (data.password) {
-      data.password = await bcrypt.hash(data.password, SALT_ROUNDS);
+      data.password = await bcrypt.hash(String(data.password).trim(), SALT_ROUNDS);
     }
 
-    await user.update({
-      username: data.username ?? user.username,
-      name: data.name ?? user.name,
-      password: data.password ?? user.password,
+    const updateData = {
+      username: nextUsername,
+      name: nextName,
       active: data.active ?? user.active,
       profileId: data.profileId ?? user.profileId
-    });
+    };
+
+    if (data.password) {
+      updateData.password = data.password;
+    }
+
+    await user.update(updateData);
 
     const result = user.toJSON();
     delete result.password;
@@ -255,29 +411,35 @@ class UserService {
     const user = await getUserWithProfile(id);
 
     if (!user) {
-      const error = new Error("User not found");
-      error.status = 404;
-      throw error;
+      throw createError("Usuário não encontrado.", 404);
     }
 
-    if (Number(user.id) === Number(requesterId) && isAdminUser(user)) {
-      const error = new Error("Usuário administrador não pode remover a si mesmo.");
-      error.status = 400;
-      throw error;
+    if (isSuperAdminUser(user)) {
+      throw createError("Usuário Super Admin não pode ser removido.", 403);
     }
 
-    if (isAdminUser(user) && Number(user.active) === 1) {
+    if (Number(user.id) === Number(requesterId)) {
+      throw createError("Usuário não pode remover a si mesmo.");
+    }
+
+    if (isRegularAdminUser(user) && Number(user.active) === 1) {
       const activeAdmins = await countActiveAdmins();
 
       if (activeAdmins <= 1) {
-        const error = new Error("Não é possível remover o único usuário administrador ativo.");
-        error.status = 400;
-        throw error;
+        throw createError("Não é possível remover o único usuário administrador ativo.");
+      }
+    }
+
+    if (Number(user.active) === 1) {
+      const activeUsers = await countActiveUsers();
+
+      if (activeUsers <= 1) {
+        throw createError("Não é possível remover o único usuário ativo do sistema.");
       }
     }
 
     await user.destroy();
-    return { message: "User deleted successfully" };
+    return { message: "Usuário excluído com sucesso." };
   }
 
   async login(username, password) {
