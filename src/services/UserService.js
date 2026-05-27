@@ -345,7 +345,7 @@ class UserService {
       throw createError("Usuário não pode inativar a si mesmo.");
     }
 
-    if (currentRole === USER_ROLES.ADMIN && Number(user.active) === 1 && (nextRole !== USER_ROLES.ADMIN || nextActive !== 1)) {
+    if (!requesterIsSuperAdmin && currentRole === USER_ROLES.ADMIN && Number(user.active) === 1 && (nextRole !== USER_ROLES.ADMIN || nextActive !== 1)) {
       const activeAdmins = await countActiveAdmins();
 
       if (activeAdmins <= 1) {
@@ -406,7 +406,7 @@ class UserService {
 
   async delete(id, requester = null) {
     const requesterId = requester?.id;
-    await ensureAdminRequester(requesterId);
+    const requesterUser = await ensureAdminRequester(requesterId);
 
     const user = await getUserWithProfile(id);
 
@@ -422,7 +422,7 @@ class UserService {
       throw createError("Usuário não pode remover a si mesmo.");
     }
 
-    if (isRegularAdminUser(user) && Number(user.active) === 1) {
+    if (!isSuperAdminUser(requesterUser) && isRegularAdminUser(user) && Number(user.active) === 1) {
       const activeAdmins = await countActiveAdmins();
 
       if (activeAdmins <= 1) {
