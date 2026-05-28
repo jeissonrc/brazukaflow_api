@@ -28,7 +28,16 @@ const ACTION_FILTERS = {
   CADASTRO: ['CREATE', 'CADASTRO'],
   ALTERACAO: ['UPDATE', 'ALTERACAO', 'ALTERAÇÃO'],
   EXCLUSAO: ['DELETE', 'REMOVE', 'EXCLUSAO', 'EXCLUSÃO'],
-  INATIVACAO: ['INACTIVE', 'INATIVACAO', 'INATIVAÇÃO', 'DESATIVACAO', 'DESATIVAÇÃO']
+  ATIVACAO: ['ATIVACAO', 'ATIVAÇÃO', 'REATIVACAO', 'REATIVAÇÃO'],
+  INATIVACAO: ['INACTIVE', 'INATIVACAO', 'INATIVAÇÃO', 'DESATIVACAO', 'DESATIVAÇÃO'],
+  ATIVACAO_INATIVACAO: ['ATIVACAO', 'ATIVAÇÃO', 'REATIVACAO', 'REATIVAÇÃO', 'INACTIVE', 'INATIVACAO', 'INATIVAÇÃO', 'DESATIVACAO', 'DESATIVAÇÃO'],
+  STATUS_FINANCEIRO: ['PAGAMENTO', 'DESPAGAMENTO', 'RECEBIMENTO', 'DESRECEBIMENTO'],
+  STATUS_PAGAMENTO: ['PAGAMENTO', 'DESPAGAMENTO'],
+  STATUS_RECEBIMENTO: ['RECEBIMENTO', 'DESRECEBIMENTO'],
+  PAGAMENTO: ['PAGAMENTO'],
+  DESPAGAMENTO: ['DESPAGAMENTO'],
+  RECEBIMENTO: ['RECEBIMENTO'],
+  DESRECEBIMENTO: ['DESRECEBIMENTO']
 };
 
 const ACTION_OPTIONS = [
@@ -37,8 +46,13 @@ const ACTION_OPTIONS = [
   { value: 'CADASTRO', label: 'Cadastro' },
   { value: 'ALTERACAO', label: 'Alteração' },
   { value: 'EXCLUSAO', label: 'Exclusão' },
-  { value: 'INATIVACAO', label: 'Inativação' }
+  { value: 'ATIVACAO_INATIVACAO', label: 'Ativação/Inativação' },
+  { value: 'STATUS_FINANCEIRO', label: 'Status Financeiro' },
+  { value: 'STATUS_PAGAMENTO', label: 'Status Pago/Não Pago' },
+  { value: 'STATUS_RECEBIMENTO', label: 'Status Recebido/Não Recebido' }
 ];
+
+const EXACT_ACTION_FILTERS = ['PAGAMENTO', 'DESPAGAMENTO', 'RECEBIMENTO', 'DESRECEBIMENTO'];
 
 const MODULE_OPTIONS = [
   { value: 'todos', label: 'Todos' },
@@ -55,7 +69,7 @@ const MODULE_OPTIONS = [
 
 const MODULE_FILTERS = {
   LOGIN: ['AUTENTICACAO', 'LOGIN'],
-  PLANO_CONTAS: ['PLANO_CONTAS', 'TIPOS_CONTAS', 'CATEGORIAS_TIPOS_CONTAS']
+  PLANO_CONTAS: ['PLANO_CONTAS', 'PLANO_CONTAS_TIPOS', 'PLANO_CONTAS_CATEGORIAS', 'TIPOS_CONTAS', 'CATEGORIAS_TIPOS_CONTAS']
 };
 
 class AuditLogService {
@@ -101,7 +115,9 @@ class AuditLogService {
       const action = String(filters.action).trim();
       const groupedActions = ACTION_FILTERS[action];
 
-      if (groupedActions) {
+      if (EXACT_ACTION_FILTERS.includes(action)) {
+        where.action = action;
+      } else if (groupedActions) {
         where.action = { [Op.or]: groupedActions.map((item) => ({ [Op.like]: `%${item}%` })) };
       } else {
         where.action = { [Op.like]: `%${action}%` };
@@ -175,11 +191,20 @@ class AuditLogService {
   }
 
   async register({ req = null, user = null, username = null, action, module, description = null, status = null, before = null, after = null }) {
+    let auditUser = user;
+
+    if (auditUser?.id && (!auditUser.name || !auditUser.profile)) {
+      auditUser = await User.findByPk(auditUser.id, {
+        include: [{ model: Profile, as: 'profile' }],
+        attributes: { exclude: ['password'] }
+      });
+    }
+
     return await AuditLog.create({
-      userId: user?.id ?? null,
-      username: user?.username ?? username ?? null,
-      userName: user?.name ?? null,
-      profile: user?.profile?.name ?? null,
+      userId: auditUser?.id ?? null,
+      username: auditUser?.username ?? username ?? null,
+      userName: auditUser?.name ?? null,
+      profile: auditUser?.profile?.name ?? null,
       action,
       module,
       description,

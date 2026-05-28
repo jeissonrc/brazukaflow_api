@@ -18,6 +18,7 @@ const incomeRoutes = require('./routes/incomeRoutes');
 const paymentMethodRoutes = require('./routes/paymentMethodRoutes');
 const originAccountsRoutes = require('./routes/originAccountsRoutes');
 const auditLogRoutes = require('./routes/auditLogRoutes');
+const backupRoutes = require('./routes/backupRoutes');
 
 // Importa os middlewares personalizados
 // - responseMiddleware: garante respostas padronizadas
@@ -40,6 +41,7 @@ app.use((req, res, next) => {
   res.setHeader('Vary', 'Origin');
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition');
 
   if (req.method === 'OPTIONS') {
     return res.sendStatus(204);
@@ -65,6 +67,7 @@ app.use('/api/incomes', incomeRoutes);
 app.use('/api/payment-methods', paymentMethodRoutes);
 app.use('/api/origin-accounts', originAccountsRoutes);
 app.use('/api/audit-logs', auditLogRoutes);
+app.use('/api/backups', backupRoutes);
 
 
 // Middleware final — pega QUALQUER erro que acontecer no sistema e envia uma resposta ao cliente (sempre deve ser o último .use())

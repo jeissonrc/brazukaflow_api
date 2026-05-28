@@ -61,6 +61,8 @@ const getPaginationNumber = (value, fallback, { min = 1, max = 1000 } = {}) => {
   return Math.min(Math.max(number, min), max);
 };
 
+const normalizeBoolean = (value) => value === true || value === 1 || value === '1' || value === 'true';
+
 class AccountsReceivableService {
 
   async getAll() {
@@ -276,6 +278,7 @@ class AccountsReceivableService {
   // --------------------------------------------------------
   async create(data) {
     validateRequiredReceivableFields(data);
+    const isPaid = normalizeBoolean(data.paid);
 
     const at = await AccountType.findByPk(data.accountTypeId);
     if (!at) {
@@ -295,12 +298,12 @@ class AccountsReceivableService {
       accountTypeId: data.accountTypeId,
       nominalDate: data.nominalDate,
       dueDate: data.dueDate,
-      paymentDate: null,
+      paymentDate: isPaid ? new Date() : null,
       paymentTypeId: data.paymentTypeId,
       documentNumber: data.documentNumber || null,
       description: data.description.trim(),
       value: data.value,
-      paid: data.paid ? true : false,
+      paid: isPaid,
       originId: data.originId || null
     });
   }
@@ -404,15 +407,24 @@ class AccountsReceivableService {
       throw err;
     }
 
+    const hasPaid = Object.prototype.hasOwnProperty.call(data, 'paid');
+    const nextPaid = hasPaid ? normalizeBoolean(data.paid) : Boolean(acc.paid);
+    const nextPaymentDate = data.paymentDate !== undefined
+      ? data.paymentDate
+      : hasPaid
+        ? (nextPaid ? (acc.paymentDate || new Date()) : null)
+        : acc.paymentDate;
+
     const nextData = {
       accountTypeId: data.accountTypeId ?? acc.accountTypeId,
       nominalDate: data.nominalDate ?? acc.nominalDate,
       dueDate: data.dueDate ?? acc.dueDate,
-      paymentDate: data.paymentDate ?? acc.paymentDate,
+      paymentDate: nextPaymentDate,
       paymentTypeId: data.paymentTypeId ?? acc.paymentTypeId,
       documentNumber: data.documentNumber ?? acc.documentNumber,
       description: data.description ?? acc.description,
       value: data.value ?? acc.value,
+      paid: nextPaid,
       originId: data.originId ?? acc.originId
     };
 
@@ -441,6 +453,7 @@ class AccountsReceivableService {
       documentNumber: nextData.documentNumber,
       description: String(nextData.description).trim(),
       value: nextData.value,
+      paid: nextData.paid,
       originId: nextData.originId
     });
 
