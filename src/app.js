@@ -19,6 +19,7 @@ const paymentMethodRoutes = require('./routes/paymentMethodRoutes');
 const originAccountsRoutes = require('./routes/originAccountsRoutes');
 const auditLogRoutes = require('./routes/auditLogRoutes');
 const backupRoutes = require('./routes/backupRoutes');
+const homeDashboardRoutes = require('./routes/homeDashboardRoutes');
 
 // Importa os middlewares personalizados
 // - responseMiddleware: garante respostas padronizadas
@@ -68,6 +69,7 @@ app.use('/api/payment-methods', paymentMethodRoutes);
 app.use('/api/origin-accounts', originAccountsRoutes);
 app.use('/api/audit-logs', auditLogRoutes);
 app.use('/api/backups', backupRoutes);
+app.use('/api/dashboard', homeDashboardRoutes);
 
 
 // Middleware final — pega QUALQUER erro que acontecer no sistema e envia uma resposta ao cliente (sempre deve ser o último .use())
