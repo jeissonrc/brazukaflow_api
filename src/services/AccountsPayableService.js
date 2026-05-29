@@ -109,11 +109,23 @@ class AccountsPayableService {
     }
 
     if (filters.dateFrom || filters.dateTo) {
-      where.dueDate = {
-        ...(where.dueDate && typeof where.dueDate === 'object' ? where.dueDate : {}),
-        ...(filters.dateFrom ? { [Op.gte]: filters.dateFrom } : {}),
-        ...(filters.dateTo ? { [Op.lte]: filters.dateTo } : {})
-      };
+      const dateConditions = [];
+      const dateFrom = normalizeDateOnly(filters.dateFrom);
+      const dateTo = normalizeDateOnly(filters.dateTo);
+
+      if (dateFrom) {
+        dateConditions.push(
+          sequelize.where(sequelize.fn('DATE', sequelize.col('Data_Vencimento')), { [Op.gte]: dateFrom })
+        );
+      }
+
+      if (dateTo) {
+        dateConditions.push(
+          sequelize.where(sequelize.fn('DATE', sequelize.col('Data_Vencimento')), { [Op.lte]: dateTo })
+        );
+      }
+
+      where[Op.and] = [...(where[Op.and] || []), ...dateConditions];
     }
 
     if (filters.search && String(filters.search).trim()) {

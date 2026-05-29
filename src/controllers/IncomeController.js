@@ -27,7 +27,7 @@ class IncomeController {
   async getOne(req, res, next) {
     try {
       const data = await IncomeService.getOne(req.params.id);
-      if (!data) throw Object.assign(new Error('Income not found'), { status: 404 });
+      if (!data) throw Object.assign(new Error('Receita não encontrada.'), { status: 404 });
       res.status(200).json(data);
     } catch (err) {
       next(err);

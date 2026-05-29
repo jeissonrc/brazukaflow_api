@@ -55,7 +55,7 @@ class CategoryTypeController {
       const category = await CategoryTypeService.getOne(req.params.id);
 
       if (!category) {
-        const error = new Error("Category not found");
+        const error = new Error('Categoria não encontrada.');
         error.status = 404;
         throw error;
       }
@@ -139,6 +139,15 @@ class CategoryTypeController {
 
     try {
       before = toPlainCategory(await CategoryTypeService.getOne(req.params.id));
+      const usage = await CategoryTypeService.getLinkedUsage(req.params.id);
+
+      if (usage.total > 0) {
+        const details = CategoryTypeService.formatLinkedUsage(usage);
+        const error = new Error(`Esta categoria está vinculada a ${details} e não pode ser removida.`);
+        error.status = 400;
+        throw error;
+      }
+
       const result = await CategoryTypeService.delete(req.params.id);
       await AuditLogService.safeRegister({
         req,

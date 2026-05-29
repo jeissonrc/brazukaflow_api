@@ -21,6 +21,13 @@ const getLinkedUsage = async (paymentTypeId) => {
   return { payableCount, receivableCount, total: payableCount + receivableCount };
 };
 
+const formatLinkedUsage = (usage) => {
+  return [
+    usage.payableCount > 0 ? `${usage.payableCount} conta(s) a pagar` : null,
+    usage.receivableCount > 0 ? `${usage.receivableCount} conta(s) a receber` : null
+  ].filter(Boolean).join(' e ');
+};
+
 class PaymentTypeService {
   async getAll() {
     return await PaymentType.findAll();
@@ -94,9 +101,17 @@ class PaymentTypeService {
     return await PaymentType.findByPk(id);
   }
 
+  async getLinkedUsage(id) {
+    return await getLinkedUsage(id);
+  }
+
+  formatLinkedUsage(usage) {
+    return formatLinkedUsage(usage);
+  }
+
   async create(data) {
-    if (!data.name) {
-      const error = new Error("Name is required");
+    if (!data.name || !String(data.name).trim()) {
+      const error = new Error('Informe o nome do tipo de pagamento.');
       error.status = 400;
       throw error;
     }
@@ -107,8 +122,14 @@ class PaymentTypeService {
   async update(id, data) {
     const payment = await PaymentType.findByPk(id);
     if (!payment) {
-      const error = new Error("Payment type not found");
+      const error = new Error('Tipo de pagamento não encontrado.');
       error.status = 404;
+      throw error;
+    }
+
+    if (data.name !== undefined && !String(data.name).trim()) {
+      const error = new Error('Informe o nome do tipo de pagamento.');
+      error.status = 400;
       throw error;
     }
 
@@ -116,10 +137,7 @@ class PaymentTypeService {
       const usage = await getLinkedUsage(id);
 
       if (usage.total > 0) {
-        const details = [
-          usage.payableCount > 0 ? `${usage.payableCount} conta(s) a pagar` : null,
-          usage.receivableCount > 0 ? `${usage.receivableCount} conta(s) a receber` : null
-        ].filter(Boolean).join(' e ');
+        const details = formatLinkedUsage(usage);
 
         const error = new Error(`Este tipo de pagamento está vinculado a ${details} e não pode ser inativado.`);
         error.status = 400;
@@ -134,13 +152,21 @@ class PaymentTypeService {
   async delete(id) {
     const payment = await PaymentType.findByPk(id);
     if (!payment) {
-      const error = new Error("Payment type not found");
+      const error = new Error('Tipo de pagamento não encontrado.');
       error.status = 404;
       throw error;
     }
 
+    const usage = await getLinkedUsage(id);
+    if (usage.total > 0) {
+      const details = formatLinkedUsage(usage);
+      const error = new Error(`Este tipo de pagamento está vinculado a ${details} e não pode ser removido.`);
+      error.status = 400;
+      throw error;
+    }
+
     await payment.destroy();
-    return { message: "Payment type deleted successfully" };
+    return { message: 'Tipo de pagamento excluído com sucesso.' };
   }
 }
 

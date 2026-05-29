@@ -55,7 +55,7 @@ class AccountTypeController {
     try {
       const account = await AccountTypeService.getOne(req.params.id);
       if (!account) {
-        const error = new Error("Account type not found");
+        const error = new Error('Tipo de conta não encontrado.');
         error.status = 404;
         throw error;
       }
@@ -138,6 +138,15 @@ class AccountTypeController {
 
     try {
       before = toPlainAccountType(await AccountTypeService.getOne(req.params.id));
+      const usage = await AccountTypeService.getLinkedUsage(req.params.id);
+
+      if (usage.total > 0) {
+        const details = AccountTypeService.formatLinkedUsage(usage);
+        const error = new Error(`Este tipo de conta está vinculado a ${details} e não pode ser removido.`);
+        error.status = 400;
+        throw error;
+      }
+
       const result = await AccountTypeService.delete(req.params.id);
       await AuditLogService.safeRegister({
         req,

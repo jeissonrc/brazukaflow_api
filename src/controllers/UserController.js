@@ -63,7 +63,7 @@ class UserController {
       const user = await UserService.getOne(req.params.id, req.user);
 
       if (!user) {
-        const error = new Error("User not found");
+        const error = new Error("Usuário não encontrado.");
         error.status = 404;
         throw error;
       }

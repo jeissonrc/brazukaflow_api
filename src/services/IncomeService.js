@@ -185,15 +185,17 @@ class IncomeService {
   }
 
   async create(data) {
-    if (!data.cashAccountId || !data.value) {
-      const err = new Error('cashAccountId and value are required');
+    const value = Number(data.value);
+
+    if (!data.cashAccountId || !Number.isFinite(value) || value <= 0) {
+      const err = new Error('Informe a conta caixa e um valor maior que zero.');
       err.status = 400;
       throw err;
     }
 
     const cashAcc = await CashAccount.findByPk(data.cashAccountId);
     if (!cashAcc) {
-      const err = new Error('CashAccount not found');
+      const err = new Error('Conta caixa não encontrada.');
       err.status = 404;
       throw err;
     }
@@ -201,7 +203,7 @@ class IncomeService {
     if (data.accountTypeId) {
       const at = await AccountType.findByPk(data.accountTypeId);
       if (!at) {
-        const err = new Error('AccountType not found');
+        const err = new Error('Tipo de conta não encontrado.');
         err.status = 404;
         throw err;
       }
@@ -211,7 +213,7 @@ class IncomeService {
       cashAccountId: data.cashAccountId,
       accountTypeId: data.accountTypeId || null,
       description: data.description || null,
-      value: data.value,
+      value,
       incomeDate: normalizeDateOnly(data.incomeDate) || getTodayDateOnly()
     });
   }
@@ -219,7 +221,7 @@ class IncomeService {
   async update(id, data) {
     const inc = await Income.findByPk(id);
     if (!inc) {
-      const err = new Error('Income not found');
+      const err = new Error('Receita não encontrada.');
       err.status = 404;
       throw err;
     }
@@ -227,7 +229,7 @@ class IncomeService {
     if (data.cashAccountId) {
       const cashAcc = await CashAccount.findByPk(data.cashAccountId);
       if (!cashAcc) {
-        const err = new Error('CashAccount not found');
+        const err = new Error('Conta caixa não encontrada.');
         err.status = 404;
         throw err;
       }
@@ -236,8 +238,17 @@ class IncomeService {
     if (data.accountTypeId) {
       const at = await AccountType.findByPk(data.accountTypeId);
       if (!at) {
-        const err = new Error('AccountType not found');
+        const err = new Error('Tipo de conta não encontrado.');
         err.status = 404;
+        throw err;
+      }
+    }
+
+    if (data.value !== undefined) {
+      const value = Number(data.value);
+      if (!Number.isFinite(value) || value <= 0) {
+        const err = new Error('O valor da receita deve ser maior que zero.');
+        err.status = 400;
         throw err;
       }
     }
@@ -256,12 +267,12 @@ class IncomeService {
   async remove(id) {
     const inc = await Income.findByPk(id);
     if (!inc) {
-      const err = new Error('Income not found');
+      const err = new Error('Receita não encontrada.');
       err.status = 404;
       throw err;
     }
     await inc.destroy();
-    return { message: 'Income Deleted successfully' };
+    return { message: 'Receita excluída com sucesso.' };
   }
 }
 

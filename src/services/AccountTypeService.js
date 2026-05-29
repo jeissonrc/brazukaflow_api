@@ -1,5 +1,9 @@
 const AccountType = require('../models/AccountType');
 const CategoryType = require('../models/CategoryType');
+const AccountsPayable = require('../models/AccountsPayable');
+const AccountsReceivable = require('../models/AccountsReceivable');
+const Income = require('../models/Income');
+const Expense = require('../models/Expense');
 const { Op } = require('sequelize');
 
 const includeAccountTypeRelations = [{ model: CategoryType, as: 'category' }];
@@ -11,6 +15,42 @@ const getPaginationNumber = (value, fallback, { min = 1, max = 1000 } = {}) => {
 };
 
 const isActiveStatus = (status) => status === true || status === 1 || status === '1' || status === 'true';
+const isInactiveStatus = (status) => status === false || status === 0 || status === '0' || status === 'false';
+const isBlank = (value) => value === undefined || value === null || String(value).trim() === '';
+
+const validateRequiredFields = (data = {}) => {
+  if (isBlank(data.description) || isBlank(data.type) || isBlank(data.categoryId)) {
+    const error = new Error('Preencha os campos obrigatórios do tipo de conta.');
+    error.status = 400;
+    throw error;
+  }
+};
+
+const getLinkedUsage = async (accountTypeId) => {
+  const [payableCount, receivableCount, incomeCount, expenseCount] = await Promise.all([
+    AccountsPayable.count({ where: { accountTypeId } }),
+    AccountsReceivable.count({ where: { accountTypeId } }),
+    Income.count({ where: { accountTypeId } }),
+    Expense.count({ where: { accountTypeId } })
+  ]);
+
+  return {
+    payableCount,
+    receivableCount,
+    incomeCount,
+    expenseCount,
+    total: payableCount + receivableCount + incomeCount + expenseCount
+  };
+};
+
+const formatLinkedUsage = (usage) => {
+  return [
+    usage.payableCount > 0 ? `${usage.payableCount} conta(s) a pagar` : null,
+    usage.receivableCount > 0 ? `${usage.receivableCount} conta(s) a receber` : null,
+    usage.incomeCount > 0 ? `${usage.incomeCount} receita(s)` : null,
+    usage.expenseCount > 0 ? `${usage.expenseCount} despesa(s)` : null
+  ].filter(Boolean).join(', ').replace(/, ([^,]*)$/, ' e $1');
+};
 
 class AccountTypeService {
   async getAll() {
@@ -141,16 +181,20 @@ class AccountTypeService {
     });
   }
 
+  async getLinkedUsage(id) {
+    return await getLinkedUsage(id);
+  }
+
+  formatLinkedUsage(usage) {
+    return formatLinkedUsage(usage);
+  }
+
   async create(data) {
-    if (!data.description || !data.categoryId) {
-      const error = new Error("Description and CategoryId are required");
-      error.status = 400;
-      throw error;
-    }
+    validateRequiredFields(data);
 
     return await AccountType.create({
-      description: data.description,
-      type: data.type || null,
+      description: String(data.description).trim(),
+      type: String(data.type).trim(),
       specie: data.specie ?? null,
       status: data.status !== undefined ? data.status : true,
       categoryId: data.categoryId
@@ -160,14 +204,31 @@ class AccountTypeService {
   async update(id, data) {
     const account = await AccountType.findByPk(id);
     if (!account) {
-      const error = new Error("Account type not found");
+      const error = new Error('Tipo de conta não encontrado.');
       error.status = 404;
       throw error;
     }
 
-    await account.update({
+    validateRequiredFields({
       description: data.description ?? account.description,
       type: data.type ?? account.type,
+      categoryId: data.categoryId ?? account.categoryId
+    });
+
+    if (data.status !== undefined && isInactiveStatus(data.status)) {
+      const usage = await getLinkedUsage(id);
+
+      if (usage.total > 0) {
+        const details = formatLinkedUsage(usage);
+        const error = new Error(`Este tipo de conta está vinculado a ${details} e não pode ser inativado.`);
+        error.status = 400;
+        throw error;
+      }
+    }
+
+    await account.update({
+      description: data.description !== undefined ? String(data.description).trim() : account.description,
+      type: data.type !== undefined ? String(data.type).trim() : account.type,
       specie: data.specie ?? account.specie,
       status: data.status !== undefined ? data.status : account.status,
       categoryId: data.categoryId ?? account.categoryId
@@ -178,13 +239,21 @@ class AccountTypeService {
   async delete(id) {
     const account = await AccountType.findByPk(id);
     if (!account) {
-      const error = new Error("Account type not found");
+      const error = new Error('Tipo de conta não encontrado.');
       error.status = 404;
       throw error;
     }
 
+    const usage = await getLinkedUsage(id);
+    if (usage.total > 0) {
+      const details = formatLinkedUsage(usage);
+      const error = new Error(`Este tipo de conta está vinculado a ${details} e não pode ser removido.`);
+      error.status = 400;
+      throw error;
+    }
+
     await account.destroy();
-    return { message: "Account type deleted successfully" };
+    return { message: 'Tipo de conta excluído com sucesso.' };
   }
 }
 

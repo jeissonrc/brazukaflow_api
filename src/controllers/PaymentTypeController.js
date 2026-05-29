@@ -54,7 +54,7 @@ class PaymentTypeController {
     try {
       const payment = await PaymentTypeService.getOne(req.params.id);
       if (!payment) {
-        const error = new Error("Payment type not found");
+        const error = new Error('Tipo de pagamento não encontrado.');
         error.status = 404;
         throw error;
       }
@@ -137,6 +137,15 @@ class PaymentTypeController {
 
     try {
       before = toPlainPaymentType(await PaymentTypeService.getOne(req.params.id));
+      const usage = await PaymentTypeService.getLinkedUsage(req.params.id);
+
+      if (usage.total > 0) {
+        const details = PaymentTypeService.formatLinkedUsage(usage);
+        const error = new Error(`Este tipo de pagamento está vinculado a ${details} e não pode ser removido.`);
+        error.status = 400;
+        throw error;
+      }
+
       const result = await PaymentTypeService.delete(req.params.id);
       await AuditLogService.safeRegister({
         req,

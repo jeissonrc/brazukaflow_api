@@ -1,4 +1,5 @@
 const CategoryType = require('../models/CategoryType');
+const AccountType = require('../models/AccountType');
 const { Op } = require('sequelize');
 
 const getPaginationNumber = (value, fallback, { min = 1, max = 1000 } = {}) => {
@@ -8,6 +9,36 @@ const getPaginationNumber = (value, fallback, { min = 1, max = 1000 } = {}) => {
 };
 
 const isActiveStatus = (status) => status === true || status === 1 || status === '1' || status === 'true';
+const isInactiveStatus = (status) => status === false || status === 0 || status === '0' || status === 'false';
+const isBlank = (value) => value === undefined || value === null || String(value).trim() === '';
+
+const validateRequiredFields = (data = {}) => {
+  if (isBlank(data.description) || isBlank(data.type) || isBlank(data.specie)) {
+    const error = new Error('Preencha os campos obrigatórios da categoria.');
+    error.status = 400;
+    throw error;
+  }
+};
+
+const getLinkedUsage = async (categoryId) => {
+  const accountTypeCount = await AccountType.count({ where: { categoryId } });
+
+  return {
+    accountTypeCount,
+    total: accountTypeCount
+  };
+};
+
+const formatLinkedUsage = (usage) => {
+  return [
+    usage.accountTypeCount > 0 ? `${usage.accountTypeCount} tipo(s) de conta` : null
+  ].filter(Boolean).join(' e ');
+};
+
+const isForeignKeyError = (error) => {
+  return error?.name === 'SequelizeForeignKeyConstraintError' ||
+    String(error?.message || '').toLowerCase().includes('foreign key constraint');
+};
 
 class CategoryTypeService {
   
@@ -126,19 +157,22 @@ class CategoryTypeService {
     return await CategoryType.findByPk(id);
   }
 
+  async getLinkedUsage(id) {
+    return await getLinkedUsage(id);
+  }
+
+  formatLinkedUsage(usage) {
+    return formatLinkedUsage(usage);
+  }
+
   async create(data) {
-    // Validação
-    if (!data.description || data.description.trim() === "") {
-      const error = new Error("Description is required");
-      error.status = 400;
-      throw error;
-    }
+    validateRequiredFields(data);
 
     // Criação no banco
     const category = await CategoryType.create({
-      description: data.description,
-      type: data.type || null,
-      specie: data.specie ?? null,
+      description: String(data.description).trim(),
+      type: String(data.type).trim(),
+      specie: String(data.specie).trim(),
       status: data.status !== undefined ? data.status : true
     });
 
@@ -149,16 +183,33 @@ class CategoryTypeService {
     const category = await CategoryType.findByPk(id);
 
     if (!category) {
-      const error = new Error("Category not found");
+      const error = new Error('Categoria não encontrada.');
       error.status = 404;
       throw error;
     }
 
-    // Atualiza apenas dados enviados
-    await category.update({
+    validateRequiredFields({
       description: data.description ?? category.description,
       type: data.type ?? category.type,
-      specie: data.specie ?? category.specie,
+      specie: data.specie ?? category.specie
+    });
+
+    if (data.status !== undefined && isInactiveStatus(data.status)) {
+      const usage = await getLinkedUsage(id);
+
+      if (usage.total > 0) {
+        const details = formatLinkedUsage(usage);
+        const error = new Error(`Esta categoria está vinculada a ${details} e não pode ser inativada.`);
+        error.status = 400;
+        throw error;
+      }
+    }
+
+    // Atualiza apenas dados enviados
+    await category.update({
+      description: data.description !== undefined ? String(data.description).trim() : category.description,
+      type: data.type !== undefined ? String(data.type).trim() : category.type,
+      specie: data.specie !== undefined ? String(data.specie).trim() : category.specie,
       status: data.status !== undefined ? data.status : category.status
     });
 
@@ -169,14 +220,32 @@ class CategoryTypeService {
     const category = await CategoryType.findByPk(id);
 
     if (!category) {
-      const error = new Error("Category not found");
+      const error = new Error('Categoria não encontrada.');
       error.status = 404;
       throw error;
     }
 
-    await category.destroy();
+    const usage = await getLinkedUsage(id);
+    if (usage.total > 0) {
+      const details = formatLinkedUsage(usage);
+      const error = new Error(`Esta categoria está vinculada a ${details} e não pode ser removida.`);
+      error.status = 400;
+      throw error;
+    }
 
-    return { message: "Category deleted successfully" };
+    try {
+      await category.destroy();
+    } catch (error) {
+      if (isForeignKeyError(error)) {
+        const friendlyError = new Error('Esta categoria está vinculada a tipo(s) de conta e não pode ser removida.');
+        friendlyError.status = 400;
+        throw friendlyError;
+      }
+
+      throw error;
+    }
+
+    return { message: 'Categoria excluída com sucesso.' };
   }
 }
 
