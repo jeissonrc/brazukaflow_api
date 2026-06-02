@@ -11,6 +11,13 @@ const getPayableLabel = (payable, fallback) => {
   return payable.description || `Código ${payable.id || fallback}`;
 };
 
+const toPlainGeneratedExpense = (payable) => {
+  if (!payable) return null;
+  const generatedExpense = payable.generatedExpense || payable.getDataValue?.('generatedExpense');
+  if (!generatedExpense) return null;
+  return typeof generatedExpense.toJSON === 'function' ? generatedExpense.toJSON() : { ...generatedExpense };
+};
+
 class AccountsPayableController {
 
   async index(req, res, next) {
@@ -187,6 +194,20 @@ class AccountsPayableController {
           status: 'SUCESSO',
           before,
           after
+        });
+      }
+
+      const generatedExpense = toPlainGeneratedExpense(data);
+      if (generatedExpense) {
+        await AuditLogService.safeRegister({
+          req,
+          user: req.user,
+          action: 'CREATE',
+          module: 'DESPESAS',
+          description: `Despesa ${generatedExpense.description || `Código ${generatedExpense.id}`} gerada a partir da conta a pagar ${getPayableLabel(after, req.params.id)}.`,
+          status: 'SUCESSO',
+          before: null,
+          after: generatedExpense
         });
       }
 

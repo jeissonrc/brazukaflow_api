@@ -3,6 +3,8 @@ const OriginAccount = require('../models/OriginAccount');
 const AccountType = require('../models/AccountType');
 const PaymentType = require('../models/PaymentType');
 const CategoryType = require('../models/CategoryType');
+const CashAccount = require('../models/CashAccount');
+const Income = require('../models/Income');
 const sequelize = require('../config/database');
 const { Op } = require('sequelize');
 
@@ -63,12 +65,45 @@ const getPaginationNumber = (value, fallback, { min = 1, max = 1000 } = {}) => {
 
 const normalizeBoolean = (value) => value === true || value === 1 || value === '1' || value === 'true';
 
+const attachLinkedIncomes = async (accounts) => {
+  const items = Array.isArray(accounts) ? accounts : [accounts].filter(Boolean);
+  const accountIds = items.map((account) => account.id).filter(Boolean);
+
+  if (accountIds.length === 0) {
+    return accounts;
+  }
+
+  const incomes = await Income.findAll({
+    attributes: ['id', 'description', 'accountReceivableId'],
+    where: {
+      accountReceivableId: { [Op.in]: accountIds }
+    }
+  });
+
+  const incomesByAccountId = incomes.reduce((acc, income) => {
+    const accountId = Number(income.accountReceivableId);
+    if (!acc.has(accountId)) {
+      acc.set(accountId, []);
+    }
+    acc.get(accountId).push(income);
+    return acc;
+  }, new Map());
+
+  items.forEach((account) => {
+    account.setDataValue('linkedIncomes', incomesByAccountId.get(Number(account.id)) || []);
+  });
+
+  return accounts;
+};
+
 class AccountsReceivableService {
 
   async getAll() {
-    return await AccountsReceivable.findAll({
+    const rows = await AccountsReceivable.findAll({
       include: includeReceivableRelations
     });
+
+    return await attachLinkedIncomes(rows);
   }
 
   async getPaginated(filters = {}) {
@@ -130,6 +165,7 @@ class AccountsReceivableService {
 
     if (filters.search && String(filters.search).trim()) {
       const search = String(filters.search).trim();
+      const numericSearch = Number(search);
       const [originMatches, accountTypeMatches, paymentTypeMatches] = await Promise.all([
         OriginAccount.findAll({
           attributes: ['id'],
@@ -158,6 +194,10 @@ class AccountsReceivableService {
         { description: { [Op.like]: `%${search}%` } },
         { documentNumber: { [Op.like]: `%${search}%` } }
       ];
+
+      if (Number.isInteger(numericSearch) && numericSearch > 0) {
+        searchConditions.push({ id: numericSearch });
+      }
 
       if (originIds.length > 0) {
         searchConditions.push({ originId: { [Op.in]: originIds } });
@@ -202,6 +242,8 @@ class AccountsReceivableService {
       offset
     });
 
+    await attachLinkedIncomes(rows);
+
     const summaryRows = await AccountsReceivable.findAll({
       where,
       attributes: ['paid', 'dueDate', 'value']
@@ -238,9 +280,11 @@ class AccountsReceivableService {
   }
 
   async getOne(id) {
-    return await AccountsReceivable.findByPk(id, {
+    const account = await AccountsReceivable.findByPk(id, {
       include: includeReceivableRelations
     });
+
+    return await attachLinkedIncomes(account);
   }
 
   // -------------------------------------------------------
@@ -421,6 +465,16 @@ class AccountsReceivableService {
 
     const hasPaid = Object.prototype.hasOwnProperty.call(data, 'paid');
     const nextPaid = hasPaid ? normalizeBoolean(data.paid) : Boolean(acc.paid);
+
+    if (hasPaid && acc.paid && !nextPaid) {
+      const linkedIncome = await Income.findOne({ where: { accountReceivableId: id } });
+      if (linkedIncome) {
+        const err = new Error(`Esta conta possui a receita vinculada Código ${linkedIncome.id}. Remova essa receita antes de marcar como não recebida.`);
+        err.status = 400;
+        throw err;
+      }
+    }
+
     const nextPaymentDate = data.paymentDate !== undefined
       ? data.paymentDate
       : hasPaid
@@ -480,6 +534,13 @@ class AccountsReceivableService {
       throw err;
     }
 
+    const linkedIncome = await Income.findOne({ where: { accountReceivableId: id } });
+    if (linkedIncome) {
+      const err = new Error(`Esta conta possui a receita vinculada Código ${linkedIncome.id}. Remova essa receita antes de excluir a conta.`);
+      err.status = 400;
+      throw err;
+    }
+
     if (acc.paid) {
       const err = new Error('Conta recebida não pode ser removida. Desmarque a conta como recebida antes de excluir.');
       err.status = 400;
@@ -490,7 +551,7 @@ class AccountsReceivableService {
     return { message: 'Account receivable deleted successfully' };
   }
 
-  async markAsReceived(id, { paymentTypeId }) {
+  async markAsReceived(id, { paymentTypeId, generateIncome, cashAccountId }) {
     const acc = await AccountsReceivable.findByPk(id);
     if (!acc) {
       const err = new Error('AccountsReceivable not found');
@@ -514,10 +575,55 @@ class AccountsReceivableService {
       acc.paymentTypeId = paymentTypeId;
     }
 
-    acc.paid = true;
-    acc.paymentDate = new Date();
+    let generatedIncome = null;
 
-    await acc.save();
+    if (generateIncome) {
+      if (!cashAccountId) {
+        const err = new Error('Selecione a conta caixa para gerar a receita.');
+        err.status = 400;
+        throw err;
+      }
+
+      const cashAccount = await CashAccount.findByPk(cashAccountId);
+      if (!cashAccount) {
+        const err = new Error('Conta caixa não encontrada.');
+        err.status = 404;
+        throw err;
+      }
+
+      const existingIncome = await Income.findOne({ where: { accountReceivableId: id } });
+      if (existingIncome) {
+        const err = new Error('Já existe uma receita vinculada a esta conta a receber.');
+        err.status = 400;
+        throw err;
+      }
+    }
+
+    await sequelize.transaction(async (transaction) => {
+      acc.paid = true;
+      acc.paymentDate = new Date();
+
+      await acc.save({ transaction });
+
+      if (generateIncome) {
+        generatedIncome = await Income.create(
+          {
+            cashAccountId,
+            accountTypeId: acc.accountTypeId,
+            accountReceivableId: acc.id,
+            description: acc.description,
+            value: acc.value,
+            incomeDate: normalizeDateOnly(acc.paymentDate)
+          },
+          { transaction }
+        );
+      }
+    });
+
+    if (generatedIncome) {
+      acc.setDataValue('generatedIncome', generatedIncome);
+    }
+
     return acc;
   }
 
@@ -531,6 +637,13 @@ class AccountsReceivableService {
 
     if (!acc.paid) {
       const err = new Error('This receivable is not marked as received');
+      err.status = 400;
+      throw err;
+    }
+
+    const linkedIncome = await Income.findOne({ where: { accountReceivableId: id } });
+    if (linkedIncome) {
+      const err = new Error(`Esta conta possui a receita vinculada Código ${linkedIncome.id}. Remova essa receita antes de marcar como não recebida.`);
       err.status = 400;
       throw err;
     }

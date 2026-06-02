@@ -2,6 +2,7 @@ const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 const CashAccount = require('./CashAccount');
 const AccountType = require('./AccountType');
+const AccountsPayable = require('./AccountsPayable');
 
 const Expense = sequelize.define(
   'Expense',
@@ -49,6 +50,16 @@ const Expense = sequelize.define(
       type: DataTypes.DATEONLY,
       allowNull: true,
       field: 'Data_Despesa'
+    },
+
+    accountPayableId: {
+      type: DataTypes.INTEGER.UNSIGNED,
+      allowNull: true,
+      field: 'ID_Conta_Pagar',
+      references: {
+        model: AccountsPayable,
+        key: 'ID_Conta'
+      }
     }
   },
   {
@@ -60,5 +71,7 @@ const Expense = sequelize.define(
 // Associações
 Expense.belongsTo(CashAccount, { foreignKey: 'cashAccountId', as: 'cashAccount' });
 Expense.belongsTo(AccountType, { foreignKey: 'accountTypeId', as: 'accountType' });
+Expense.belongsTo(AccountsPayable, { foreignKey: 'accountPayableId', as: 'accountPayable' });
+AccountsPayable.hasMany(Expense, { foreignKey: 'accountPayableId', as: 'linkedExpenses' });
 
 module.exports = Expense;

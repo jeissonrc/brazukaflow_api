@@ -11,6 +11,16 @@ const getReceivableLabel = (receivable, fallback) => {
   return receivable.description || `Código ${receivable.id || fallback}`;
 };
 
+const toPlainGeneratedIncome = (receivable) => {
+  if (!receivable) return null;
+  const generatedIncome = typeof receivable.get === 'function'
+    ? receivable.get('generatedIncome')
+    : receivable.generatedIncome;
+
+  if (!generatedIncome) return null;
+  return typeof generatedIncome.toJSON === 'function' ? generatedIncome.toJSON() : { ...generatedIncome };
+};
+
 class AccountsReceivableController {
 
   async index(req, res, next) {
@@ -177,6 +187,7 @@ class AccountsReceivableController {
       before = toPlainReceivable(await AccountsReceivableService.getOne(req.params.id));
       const data = await AccountsReceivableService.markAsReceived(req.params.id, req.body);
       const after = toPlainReceivable(data);
+      const generatedIncome = toPlainGeneratedIncome(data);
       const auditAction = req.body?.auditAsUpdate ? 'UPDATE' : 'RECEBIMENTO';
 
       if (!req.body?.skipAudit) {
@@ -189,6 +200,19 @@ class AccountsReceivableController {
           status: 'SUCESSO',
           before,
           after
+        });
+      }
+
+      if (generatedIncome) {
+        await AuditLogService.safeRegister({
+          req,
+          user: req.user,
+          action: 'CREATE',
+          module: 'RECEITAS',
+          description: `Receita ${generatedIncome.description || `Código ${generatedIncome.id}`} gerada a partir da conta a receber ${getReceivableLabel(after, req.params.id)}.`,
+          status: 'SUCESSO',
+          before: null,
+          after: generatedIncome
         });
       }
 

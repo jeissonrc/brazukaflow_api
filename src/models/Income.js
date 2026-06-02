@@ -2,6 +2,7 @@ const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 const CashAccount = require('./CashAccount');
 const AccountType = require('./AccountType'); // tipos_contas
+const AccountsReceivable = require('./AccountsReceivable');
 
 const Income = sequelize.define(
   'Income', 
@@ -44,6 +45,15 @@ const Income = sequelize.define(
       model: CashAccount,
       key: 'ID_Conta'
     }
+  },
+  accountReceivableId: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    allowNull: true,
+    field: 'ID_Conta_Receber',
+    references: {
+      model: AccountsReceivable,
+      key: 'ID_Conta'
+    }
   }
 }, {
   tableName: 'receitas',
@@ -53,5 +63,7 @@ const Income = sequelize.define(
 // Associações
 Income.belongsTo(AccountType, { foreignKey: 'accountTypeId', as: 'accountType' });
 Income.belongsTo(CashAccount, { foreignKey: 'cashAccountId', as: 'cashAccount' });
+Income.belongsTo(AccountsReceivable, { foreignKey: 'accountReceivableId', as: 'accountReceivable' });
+AccountsReceivable.hasMany(Income, { foreignKey: 'accountReceivableId', as: 'linkedIncomes' });
 
 module.exports = Income;

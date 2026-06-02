@@ -2,6 +2,7 @@ const Income = require('../models/Income');
 const CashAccount = require('../models/CashAccount');
 const AccountType = require('../models/AccountType');
 const CategoryType = require('../models/CategoryType');
+const AccountsReceivable = require('../models/AccountsReceivable');
 const { Op } = require('sequelize');
 
 const getTodayDateOnly = () => {
@@ -30,7 +31,8 @@ const normalizeDateOnly = (value) => {
 
 const includeIncomeRelations = [
   { model: CashAccount, as: 'cashAccount' },
-  { model: AccountType, as: 'accountType', include: [{ model: CategoryType, as: 'category' }] }
+  { model: AccountType, as: 'accountType', include: [{ model: CategoryType, as: 'category' }] },
+  { model: AccountsReceivable, as: 'accountReceivable' }
 ];
 
 const getPaginationNumber = (value, fallback, { min = 1, max = 1000 } = {}) => {
@@ -209,9 +211,26 @@ class IncomeService {
       }
     }
 
+    if (data.accountReceivableId) {
+      const accountReceivable = await AccountsReceivable.findByPk(data.accountReceivableId);
+      if (!accountReceivable) {
+        const err = new Error('Conta a receber vinculada não encontrada.');
+        err.status = 404;
+        throw err;
+      }
+
+      const existingIncome = await Income.findOne({ where: { accountReceivableId: data.accountReceivableId } });
+      if (existingIncome) {
+        const err = new Error(`Já existe uma receita vinculada a esta conta a receber. Código da receita: ${existingIncome.id}.`);
+        err.status = 400;
+        throw err;
+      }
+    }
+
     return await Income.create({
       cashAccountId: data.cashAccountId,
       accountTypeId: data.accountTypeId || null,
+      accountReceivableId: data.accountReceivableId || null,
       description: data.description || null,
       value,
       incomeDate: normalizeDateOnly(data.incomeDate) || getTodayDateOnly()
@@ -271,6 +290,7 @@ class IncomeService {
       err.status = 404;
       throw err;
     }
+
     await inc.destroy();
     return { message: 'Receita excluída com sucesso.' };
   }

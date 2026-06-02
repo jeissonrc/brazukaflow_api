@@ -74,11 +74,49 @@ async function ensureAccountPlanSchema() {
     });
   }
 
+  if (!incomeColumns.ID_Conta_Receber) {
+    await queryInterface.addColumn('receitas', 'ID_Conta_Receber', {
+      type: DataTypes.INTEGER.UNSIGNED,
+      allowNull: true
+    });
+
+    await queryInterface.addConstraint('receitas', {
+      fields: ['ID_Conta_Receber'],
+      type: 'foreign key',
+      name: 'receitas_ibfk_conta_receber',
+      references: {
+        table: 'contas_receber',
+        field: 'ID_Conta'
+      },
+      onDelete: 'RESTRICT',
+      onUpdate: 'CASCADE'
+    });
+  }
+
   const expenseColumns = await queryInterface.describeTable('despesas');
   if (expenseColumns.Data_Despesa?.type !== 'DATE') {
     await queryInterface.changeColumn('despesas', 'Data_Despesa', {
       type: DataTypes.DATEONLY,
       allowNull: true
+    });
+  }
+
+  if (!expenseColumns.ID_Conta_Pagar) {
+    await queryInterface.addColumn('despesas', 'ID_Conta_Pagar', {
+      type: DataTypes.INTEGER.UNSIGNED,
+      allowNull: true
+    });
+
+    await queryInterface.addConstraint('despesas', {
+      fields: ['ID_Conta_Pagar'],
+      type: 'foreign key',
+      name: 'despesas_ibfk_conta_pagar',
+      references: {
+        table: 'contas_pagar',
+        field: 'ID_Conta'
+      },
+      onDelete: 'RESTRICT',
+      onUpdate: 'CASCADE'
     });
   }
 }

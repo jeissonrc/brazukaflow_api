@@ -2,6 +2,7 @@ const Expense = require('../models/Expense');
 const CashAccount = require('../models/CashAccount');
 const AccountType = require('../models/AccountType');
 const CategoryType = require('../models/CategoryType');
+const AccountsPayable = require('../models/AccountsPayable');
 const { Op } = require('sequelize');
 
 const getTodayDateOnly = () => {
@@ -30,7 +31,8 @@ const normalizeDateOnly = (value) => {
 
 const includeExpenseRelations = [
   { model: CashAccount, as: 'cashAccount' },
-  { model: AccountType, as: 'accountType', include: [{ model: CategoryType, as: 'category' }] }
+  { model: AccountType, as: 'accountType', include: [{ model: CategoryType, as: 'category' }] },
+  { model: AccountsPayable, as: 'accountPayable' }
 ];
 
 const getPaginationNumber = (value, fallback, { min = 1, max = 1000 } = {}) => {
@@ -209,9 +211,26 @@ class ExpenseService {
       }
     }
 
+    if (data.accountPayableId) {
+      const accountPayable = await AccountsPayable.findByPk(data.accountPayableId);
+      if (!accountPayable) {
+        const err = new Error('Conta a pagar vinculada não encontrada.');
+        err.status = 404;
+        throw err;
+      }
+
+      const existingExpense = await Expense.findOne({ where: { accountPayableId: data.accountPayableId } });
+      if (existingExpense) {
+        const err = new Error(`Já existe uma despesa vinculada a esta conta a pagar. Código da despesa: ${existingExpense.id}.`);
+        err.status = 400;
+        throw err;
+      }
+    }
+
     return await Expense.create({
       cashAccountId: data.cashAccountId,
       accountTypeId: data.accountTypeId || null,
+      accountPayableId: data.accountPayableId || null,
       description: data.description || null,
       value,
       expenseDate: normalizeDateOnly(data.expenseDate) || getTodayDateOnly()

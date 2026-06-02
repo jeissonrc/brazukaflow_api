@@ -13,10 +13,15 @@ const normalizeDateOnly = (value) => {
 
 const toMonthKey = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
 
-const getMonthRange = (monthKey) => ({
-  start: `${monthKey}-01`,
-  end: `${monthKey}-31`
-});
+const getMonthRange = (monthKey) => {
+  const [year, month] = monthKey.split('-').map(Number);
+  const lastDay = new Date(year, month, 0).getDate();
+
+  return {
+    start: `${monthKey}-01`,
+    end: `${monthKey}-${String(lastDay).padStart(2, '0')}`
+  };
+};
 
 const getLastMonths = (quantity = 6) => {
   const today = new Date();

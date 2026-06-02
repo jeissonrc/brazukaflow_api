@@ -24,7 +24,7 @@ class BackupController {
       await AuditLogService.safeRegister({
         req,
         user: req.user,
-        action: 'CREATE',
+        action: 'BACKUP',
         module: 'BACKUP',
         description: `Backup SQL ${fileName} gerado.`,
         status: 'SUCESSO',
@@ -42,7 +42,7 @@ class BackupController {
       await AuditLogService.safeRegister({
         req,
         user: req.user,
-        action: 'CREATE',
+        action: 'BACKUP',
         module: 'BACKUP',
         description: `Falha ao gerar backup SQL: ${err.message}`,
         status: 'ERRO'

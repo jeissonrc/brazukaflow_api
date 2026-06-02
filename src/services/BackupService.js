@@ -99,6 +99,47 @@ class BackupService {
       tableCount: tables.length
     };
   }
+
+  generateRowsBackup({ title, tableName, rows, generatedAt = new Date(), metadata = [] }) {
+    const quotedTable = quoteIdentifier(tableName);
+    const lines = [
+      `-- ${title}`,
+      `-- Gerado em: ${formatDateTime(generatedAt)}`,
+      ...metadata.map((item) => `-- ${item}`),
+      '',
+    ];
+
+    if (!rows.length) {
+      lines.push(`-- Nenhum registro encontrado em ${quotedTable}`);
+      lines.push('');
+
+      return {
+        sql: lines.join('\n'),
+        generatedAt,
+        rowCount: 0
+      };
+    }
+
+    lines.push('START TRANSACTION;');
+    lines.push('');
+
+    for (const row of rows) {
+      const columns = Object.keys(row);
+      const columnList = columns.map(quoteIdentifier).join(', ');
+      const valueList = columns.map((column) => formatSqlValue(row[column])).join(', ');
+      lines.push(`INSERT INTO ${quotedTable} (${columnList}) VALUES (${valueList});`);
+    }
+
+    lines.push('');
+    lines.push('COMMIT;');
+    lines.push('');
+
+    return {
+      sql: lines.join('\n'),
+      generatedAt,
+      rowCount: rows.length
+    };
+  }
 }
 
 module.exports = new BackupService();

@@ -3,6 +3,8 @@ const OriginAccount = require('../models/OriginAccount');
 const AccountType = require('../models/AccountType');
 const PaymentType = require('../models/PaymentType');
 const CategoryType = require('../models/CategoryType');
+const CashAccount = require('../models/CashAccount');
+const Expense = require('../models/Expense');
 const sequelize = require('../config/database');
 const { Op } = require('sequelize');
 
@@ -63,12 +65,45 @@ const getPaginationNumber = (value, fallback, { min = 1, max = 1000 } = {}) => {
 
 const normalizeBoolean = (value) => value === true || value === 1 || value === '1' || value === 'true';
 
+const attachLinkedExpenses = async (accounts) => {
+  const items = Array.isArray(accounts) ? accounts : [accounts].filter(Boolean);
+  const accountIds = items.map((account) => account.id).filter(Boolean);
+
+  if (accountIds.length === 0) {
+    return accounts;
+  }
+
+  const expenses = await Expense.findAll({
+    attributes: ['id', 'description', 'accountPayableId'],
+    where: {
+      accountPayableId: { [Op.in]: accountIds }
+    }
+  });
+
+  const expensesByAccountId = expenses.reduce((acc, expense) => {
+    const accountId = Number(expense.accountPayableId);
+    if (!acc.has(accountId)) {
+      acc.set(accountId, []);
+    }
+    acc.get(accountId).push(expense);
+    return acc;
+  }, new Map());
+
+  items.forEach((account) => {
+    account.setDataValue('linkedExpenses', expensesByAccountId.get(Number(account.id)) || []);
+  });
+
+  return accounts;
+};
+
 class AccountsPayableService {
   
   async getAll() {
-    return await AccountsPayable.findAll({
+    const rows = await AccountsPayable.findAll({
       include: includePayableRelations
     });
+
+    return await attachLinkedExpenses(rows);
   }
 
   async getPaginated(filters = {}) {
@@ -201,6 +236,7 @@ class AccountsPayableService {
       limit,
       offset
     });
+    await attachLinkedExpenses(rows);
 
     const summaryRows = await AccountsPayable.findAll({
       where,
@@ -238,9 +274,11 @@ class AccountsPayableService {
   }
 
   async getOne(id) {
-    return await AccountsPayable.findByPk(id, {
+    const account = await AccountsPayable.findByPk(id, {
       include: includePayableRelations
     });
+
+    return await attachLinkedExpenses(account);
   }
 
   // Método Search (Busca Avançada - Para Relatórios Dinâmicos)
@@ -430,6 +468,16 @@ class AccountsPayableService {
 
     const hasPaid = Object.prototype.hasOwnProperty.call(data, 'paid');
     const nextPaid = hasPaid ? normalizeBoolean(data.paid) : Boolean(acc.paid);
+
+    if (hasPaid && acc.paid && !nextPaid) {
+      const linkedExpense = await Expense.findOne({ where: { accountPayableId: id } });
+      if (linkedExpense) {
+        const err = new Error(`Esta conta possui a despesa vinculada Código ${linkedExpense.id}. Remova essa despesa antes de marcar como não paga.`);
+        err.status = 400;
+        throw err;
+      }
+    }
+
     const nextPaymentDate = data.paymentDate !== undefined
       ? data.paymentDate
       : hasPaid
@@ -489,6 +537,13 @@ class AccountsPayableService {
       throw err;
     }
 
+    const linkedExpense = await Expense.findOne({ where: { accountPayableId: id } });
+    if (linkedExpense) {
+      const err = new Error(`Esta conta possui a despesa vinculada Código ${linkedExpense.id}. Remova essa despesa antes de excluir a conta.`);
+      err.status = 400;
+      throw err;
+    }
+
     if (acc.paid) {
       const err = new Error('Conta paga não pode ser removida. Desmarque a conta como paga antes de excluir.');
       err.status = 400;
@@ -499,7 +554,7 @@ class AccountsPayableService {
     return { message: 'Account payable deleted successfully' };
   }
 
-  async markAsPaid(id, { paymentTypeId }) {
+  async markAsPaid(id, { paymentTypeId, generateExpense, cashAccountId }) {
     const acc = await AccountsPayable.findByPk(id);
     if (!acc) {
       const err = new Error('AccountsPayable not found');
@@ -523,10 +578,55 @@ class AccountsPayableService {
       acc.paymentTypeId = paymentTypeId;
     }
 
-    acc.paid = true;
-    acc.paymentDate = new Date();
+    let generatedExpense = null;
 
-    await acc.save();
+    if (generateExpense) {
+      if (!cashAccountId) {
+        const err = new Error('Selecione a conta caixa para gerar a despesa.');
+        err.status = 400;
+        throw err;
+      }
+
+      const cashAccount = await CashAccount.findByPk(cashAccountId);
+      if (!cashAccount) {
+        const err = new Error('Conta caixa não encontrada.');
+        err.status = 404;
+        throw err;
+      }
+
+      const existingExpense = await Expense.findOne({ where: { accountPayableId: id } });
+      if (existingExpense) {
+        const err = new Error('Já existe uma despesa vinculada a esta conta a pagar.');
+        err.status = 400;
+        throw err;
+      }
+    }
+
+    await sequelize.transaction(async (transaction) => {
+      acc.paid = true;
+      acc.paymentDate = new Date();
+
+      await acc.save({ transaction });
+
+      if (generateExpense) {
+        generatedExpense = await Expense.create(
+          {
+            cashAccountId,
+            accountTypeId: acc.accountTypeId,
+            accountPayableId: acc.id,
+            description: acc.description,
+            value: acc.value,
+            expenseDate: normalizeDateOnly(acc.paymentDate)
+          },
+          { transaction }
+        );
+      }
+    });
+
+    if (generatedExpense) {
+      acc.setDataValue('generatedExpense', generatedExpense);
+    }
+
     return acc;
   }
 
@@ -540,6 +640,13 @@ class AccountsPayableService {
 
     if (!acc.paid) {
       const err = new Error('This payable is not marked as paid');
+      err.status = 400;
+      throw err;
+    }
+
+    const linkedExpense = await Expense.findOne({ where: { accountPayableId: id } });
+    if (linkedExpense) {
+      const err = new Error(`Esta conta possui a despesa vinculada Código ${linkedExpense.id}. Remova essa despesa antes de marcar como não paga.`);
       err.status = 400;
       throw err;
     }

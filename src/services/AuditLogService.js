@@ -34,6 +34,7 @@ const ACTION_FILTERS = {
   STATUS_FINANCEIRO: ['PAGAMENTO', 'DESPAGAMENTO', 'RECEBIMENTO', 'DESRECEBIMENTO'],
   STATUS_PAGAMENTO: ['PAGAMENTO', 'DESPAGAMENTO'],
   STATUS_RECEBIMENTO: ['RECEBIMENTO', 'DESRECEBIMENTO'],
+  BACKUP: ['BACKUP'],
   PAGAMENTO: ['PAGAMENTO'],
   DESPAGAMENTO: ['DESPAGAMENTO'],
   RECEBIMENTO: ['RECEBIMENTO'],
@@ -49,7 +50,8 @@ const ACTION_OPTIONS = [
   { value: 'ATIVACAO_INATIVACAO', label: 'Ativação/Inativação' },
   { value: 'STATUS_FINANCEIRO', label: 'Status Financeiro' },
   { value: 'STATUS_PAGAMENTO', label: 'Status Pago/Não Pago' },
-  { value: 'STATUS_RECEBIMENTO', label: 'Status Recebido/Não Recebido' }
+  { value: 'STATUS_RECEBIMENTO', label: 'Status Recebido/Não Recebido' },
+  { value: 'BACKUP', label: 'Backup' }
 ];
 
 const EXACT_ACTION_FILTERS = ['PAGAMENTO', 'DESPAGAMENTO', 'RECEBIMENTO', 'DESRECEBIMENTO'];
@@ -64,7 +66,8 @@ const MODULE_OPTIONS = [
   { value: 'CONTAS_RECEBER', label: 'Contas a Receber' },
   { value: 'RECEITAS', label: 'Receitas' },
   { value: 'DESPESAS', label: 'Despesas' },
-  { value: 'BACKUP', label: 'Backup' }
+  { value: 'BACKUP', label: 'Manutenção/Backups' },
+  { value: 'MANUTENCAO', label: 'Manutenção/Logs' }
 ];
 
 const MODULE_FILTERS = {
@@ -80,7 +83,7 @@ class AuditLogService {
     });
 
     if (!requester || Number(requester.profileId) !== PROFILE_IDS.SUPER_ADMIN) {
-      const error = new Error('Apenas Super Admin pode consultar auditoria.');
+      const error = new Error('Apenas Super Admin pode acessar auditoria.');
       error.status = 403;
       throw error;
     }
@@ -168,6 +171,61 @@ class AuditLogService {
         totalPages: Math.max(1, Math.ceil(total / limit))
       }
     };
+  }
+
+  async deleteOlderThanMonths(months, requester = null) {
+    await this.ensureSuperAdmin(requester?.id);
+    const { cutoffDate, months: monthsNumber } = this.getCleanupCutoffDate(months);
+
+    const deletedCount = await AuditLog.destroy({
+      where: {
+        occurredAt: {
+          [Op.lt]: cutoffDate
+        }
+      }
+    });
+
+    return {
+      deletedCount,
+      cutoffDate,
+      months: monthsNumber
+    };
+  }
+
+  getCleanupCutoffDate(months) {
+    const allowedMonths = [6, 12, 24];
+    const monthsNumber = Number(months);
+
+    if (!allowedMonths.includes(monthsNumber)) {
+      const error = new Error('Período inválido para limpeza de logs.');
+      error.status = 400;
+      throw error;
+    }
+
+    const cutoffDate = new Date();
+    cutoffDate.setMonth(cutoffDate.getMonth() - monthsNumber);
+    cutoffDate.setHours(0, 0, 0, 0);
+
+    return {
+      cutoffDate,
+      months: monthsNumber
+    };
+  }
+
+  async getLastManualCleanup(requester = null) {
+    await this.ensureSuperAdmin(requester?.id);
+
+    return await AuditLog.findOne({
+      where: {
+        action: 'DELETE',
+        module: 'MANUTENCAO',
+        status: 'SUCESSO',
+        description: {
+          [Op.like]: 'Limpeza manual removeu%'
+        }
+      },
+      order: [['occurredAt', 'DESC']]
+    });
   }
 
   async getFilterOptions(requester = null) {
