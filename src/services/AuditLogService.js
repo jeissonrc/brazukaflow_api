@@ -60,6 +60,7 @@ const MODULE_OPTIONS = [
   { value: 'todos', label: 'Todos' },
   { value: 'LOGIN', label: 'Login' },
   { value: 'USUARIOS', label: 'Usuários' },
+  { value: 'ORIGENS', label: 'Origens de Contas' },
   { value: 'PLANO_CONTAS', label: 'Plano de Contas' },
   { value: 'TIPOS_PAGAMENTO', label: 'Tipos de Pagamento' },
   { value: 'CONTAS_PAGAR', label: 'Contas a Pagar' },

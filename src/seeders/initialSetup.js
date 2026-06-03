@@ -121,6 +121,19 @@ async function ensureAccountPlanSchema() {
   }
 }
 
+async function ensureOriginAccountsSchema() {
+  const queryInterface = sequelize.getQueryInterface();
+  const originColumns = await queryInterface.describeTable('origens_contas');
+
+  if (!originColumns.Status_Origem) {
+    await queryInterface.addColumn('origens_contas', 'Status_Origem', {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true
+    });
+  }
+}
+
 async function ensureAuditLogSchema() {
   const queryInterface = sequelize.getQueryInterface();
   const tables = await queryInterface.showAllTables();
@@ -291,6 +304,7 @@ async function ensureSystemProfiles() {
 async function init() {
   try {
     await ensureAccountPlanSchema();
+    await ensureOriginAccountsSchema();
     await ensureAuditLogSchema();
 
     // ---------- 1. Criar perfis padrões ----------

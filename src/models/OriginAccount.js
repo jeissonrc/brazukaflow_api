@@ -31,6 +31,12 @@ const OriginAccount = sequelize.define(
       allowNull: true,
       field: 'Pessoa',
       comment: '0: False - 1:True'
+    },
+    status: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true,
+      field: 'Status_Origem'
     }
   },
   {
