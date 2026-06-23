@@ -19,7 +19,7 @@ const paymentMethodRoutes = require('./routes/paymentMethodRoutes');
 const originAccountsRoutes = require('./routes/originAccountsRoutes');
 const auditLogRoutes = require('./routes/auditLogRoutes');
 const backupRoutes = require('./routes/backupRoutes');
-
+const homeDashboardRoutes = require('./routes/homeDashboardRoutes');
 
 // Importa os middlewares personalizados
 // - responseMiddleware: garante respostas padronizadas
