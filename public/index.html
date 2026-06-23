@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BRazucaFlow API</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #172033;
+      --panel-soft: #1e293b;
+      --text: #f8fafc;
+      --muted: #cbd5e1;
+      --border: #334155;
+      --green: #22c55e;
+      --yellow: #facc15;
+      --blue: #38bdf8;
+      --shadow: rgba(2, 6, 23, 0.38);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 32px;
+      background:
+        radial-gradient(circle at top left, rgba(56, 189, 248, 0.16), transparent 34%),
+        linear-gradient(135deg, #0f172a 0%, #111827 48%, #0b1220 100%);
+      color: var(--text);
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    main {
+      width: min(920px, 100%);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      background: rgba(23, 32, 51, 0.94);
+      box-shadow: 0 24px 70px var(--shadow);
+      overflow: hidden;
+    }
+
+    .hero {
+      padding: 42px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .brand {
+      margin: 0 0 14px;
+      font-size: clamp(2rem, 5vw, 3.4rem);
+      line-height: 1;
+      letter-spacing: 0;
+      text-shadow: 0 3px 12px rgba(0, 0, 0, 0.35);
+    }
+
+    .brand .br {
+      color: var(--green);
+    }
+
+    .brand .azuka {
+      color: var(--yellow);
+    }
+
+    .brand .flow {
+      color: var(--blue);
+    }
+
+    .subtitle {
+      max-width: 640px;
+      margin: 0;
+      color: var(--muted);
+      font-size: 1.05rem;
+      line-height: 1.6;
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: minmax(0, 1.3fr) minmax(260px, 0.7fr);
+      gap: 22px;
+      padding: 28px;
+    }
+
+    .card {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: rgba(30, 41, 59, 0.72);
+      padding: 24px;
+    }
+
+    h2 {
+      margin: 0 0 14px;
+      font-size: 1.08rem;
+      font-weight: 700;
+    }
+
+    p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 22px;
+    }
+
+    a {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 0 18px;
+      border-radius: 8px;
+      color: #06121f;
+      background: var(--blue);
+      font-weight: 700;
+      text-decoration: none;
+      transition: transform 0.18s ease, filter 0.18s ease;
+    }
+
+    a:hover {
+      filter: brightness(1.08);
+      transform: translateY(-1px);
+    }
+
+    .status {
+      display: grid;
+      gap: 12px;
+    }
+
+    .status-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 12px 0;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+    }
+
+    .status-item:last-child {
+      border-bottom: 0;
+    }
+
+    .label {
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .value {
+      color: var(--text);
+      font-weight: 700;
+      text-align: right;
+    }
+
+    .online {
+      color: var(--green);
+    }
+
+    @media (max-width: 760px) {
+      body {
+        padding: 18px;
+      }
+
+      .hero {
+        padding: 30px 24px;
+      }
+
+      .content {
+        grid-template-columns: 1fr;
+        padding: 20px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="hero">
+      <h1 class="brand"><span class="br">BR</span><span class="azuka">azuka</span><span class="flow">Flow</span> API</h1>
+      <p class="subtitle">
+        API oficial do sistema BRazucaFlow para gerenciamento financeiro, cadastros, auditoria,
+        relatórios e rotinas de manutenção.
+      </p>
+    </section>
+
+    <section class="content">
+      <div class="card">
+        <h2>Documentação Oficial</h2>
+        <p>
+          Consulte os módulos, endpoints, autenticação, formatos de requisição e exemplos de uso
+          disponíveis para integração e testes da API.
+        </p>
+        <div class="actions">
+          <a href="/docs">Abrir Documentação</a>
+        </div>
+      </div>
+
+      <aside class="card">
+        <h2>Status da API</h2>
+        <div class="status">
+          <div class="status-item">
+            <span class="label">Situação</span>
+            <span class="value online">Online</span>
+          </div>
+          <div class="status-item">
+            <span class="label">Versão</span>
+            <span class="value">1.0.0</span>
+          </div>
+          <div class="status-item">
+            <span class="label">Ambiente</span>
+            <span class="value">API</span>
+          </div>
+        </div>
+      </aside>
+    </section>
+  </main>
+</body>
+</html>

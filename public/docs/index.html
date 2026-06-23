@@ -1,0 +1,2076 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BRazucaFlow API - Documentação Técnica</title>
+  <style>
+    :root {
+      --ink: #17212f;
+      --muted: #5d6b7a;
+      --line: #d7dee8;
+      --soft: #f4f7fa;
+      --soft-2: #eef3f7;
+      --brand: #0f5f86;
+      --green: #17845b;
+      --orange: #b56a12;
+      --red: #b83d3d;
+      --paper: #ffffff;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: #e9eef4;
+      font-family: Inter, Arial, Helvetica, sans-serif;
+      font-size: 15px;
+      line-height: 1.58;
+    }
+    .page {
+      width: min(1180px, calc(100% - 32px));
+      margin: 24px auto;
+      background: var(--paper);
+      box-shadow: 0 10px 36px rgba(15, 23, 42, .09);
+    }
+    .hero {
+      padding: 52px 60px 42px;
+      color: #fff;
+      background: linear-gradient(135deg, #0f4c75 0%, #11324d 100%);
+    }
+    .eyebrow {
+      margin: 0 0 12px;
+      color: #a8d5ef;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      font-size: 12px;
+    }
+    h1, h2, h3, h4, h5 { margin-top: 0; color: var(--ink); }
+    h1 {
+      margin-bottom: 10px;
+      color: #fff;
+      font-size: 36px;
+      line-height: 1.15;
+    }
+    .brand-title {
+      display: flex;
+      align-items: baseline;
+      gap: 0;
+      flex-wrap: wrap;
+      font-size: 38px;
+      letter-spacing: 0;
+    }
+    .brand-br { color: #00A676; }
+    .brand-azuca { color: #F9C74F; }
+    .brand-flow { color: #5DADE2; }
+    .brand-api {
+      margin-left: 12px;
+      color: #d9eaf5;
+      font-size: 24px;
+      font-weight: 700;
+    }
+    .subtitle {
+      max-width: 780px;
+      margin: 0;
+      color: #d9eaf5;
+      font-size: 17px;
+    }
+    .doc-meta {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 30px;
+    }
+    .doc-meta div {
+      padding: 14px 16px;
+      border: 1px solid rgba(255,255,255,.22);
+      background: rgba(255,255,255,.08);
+      border-radius: 8px;
+    }
+    .doc-meta strong { display: block; color: #fff; }
+    .doc-meta span { color: #cce1ef; font-size: 13px; }
+    main.content { padding: 44px 60px 60px; }
+    .toc {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+      margin: 18px 0 34px;
+    }
+    .toc a {
+      display: block;
+      padding: 12px 14px;
+      color: var(--brand);
+      text-decoration: none;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--soft);
+    }
+    .toc a:hover { background: #e8f1f7; }
+    h2 {
+      margin: 42px 0 10px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid var(--line);
+      font-size: 25px;
+    }
+    h3 { margin: 28px 0 10px; font-size: 19px; }
+    h4 { margin-bottom: 4px; font-size: 16px; }
+    h5 { margin: 18px 0 8px; font-size: 14px; }
+    p { margin-top: 0; }
+    code {
+      padding: 1px 4px;
+      background: #edf2f7;
+      border-radius: 4px;
+      font-family: "SFMono-Regular", Consolas, "Courier New", monospace;
+      overflow-wrap: anywhere;
+    }
+    pre {
+      overflow: auto;
+      margin: 8px 0 16px;
+      padding: 16px;
+      color: #e6edf3;
+      background: #182232;
+      border-radius: 8px;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    pre code { padding: 0; color: inherit; background: transparent; border-radius: 0; }
+    table {
+      width: 100%;
+      margin: 12px 0 22px;
+      border-collapse: collapse;
+      border: 1px solid var(--line);
+    }
+    th, td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+    th { background: var(--soft-2); color: #243447; }
+    .callout {
+      margin: 18px 0 24px;
+      padding: 16px 18px;
+      border-left: 4px solid var(--brand);
+      background: var(--soft);
+      border-radius: 0 8px 8px 0;
+    }
+    .warning { border-left-color: var(--orange); background: #fff8ec; }
+    .module {
+      margin-top: 18px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #fff;
+      overflow: hidden;
+    }
+    .module-description {
+      margin: 0;
+      color: var(--muted);
+    }
+    .module-toggle-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 18px;
+      padding: 18px 20px;
+      background: var(--soft);
+      border-bottom: 1px solid transparent;
+    }
+    .module.is-open .module-toggle-row { border-bottom-color: var(--line); }
+    .module-toggle {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      padding: 0;
+      color: var(--ink);
+      background: transparent;
+      border: 0;
+      text-align: left;
+      font: inherit;
+      cursor: pointer;
+    }
+    .module-toggle h2 {
+      margin: 0;
+      padding: 0;
+      border: 0;
+      font-size: 23px;
+    }
+    .module-toggle-icon {
+      width: 26px;
+      height: 26px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--brand);
+      background: #fff;
+      font-weight: 800;
+      line-height: 1;
+      flex: 0 0 auto;
+    }
+    .module.is-open .module-toggle-icon::before { content: "−"; }
+    .module:not(.is-open) .module-toggle-icon::before { content: "+"; }
+    .module-panel {
+      display: none;
+      padding: 2px 18px 18px;
+    }
+    .module.is-open .module-panel { display: block; }
+    .accordion-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin: 6px 0 18px;
+    }
+    .accordion-action {
+      padding: 8px 12px;
+      color: var(--brand);
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 700;
+    }
+    .accordion-action:hover { background: #e8f1f7; }
+    .endpoint {
+      margin: 18px 0;
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fff;
+      page-break-inside: avoid;
+    }
+    .endpoint-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+    }
+    .method {
+      min-width: 72px;
+      padding: 5px 8px;
+      color: #fff;
+      border-radius: 5px;
+      font-weight: 800;
+      font-size: 12px;
+      text-align: center;
+    }
+    .method-get { background: var(--brand); }
+    .method-post { background: var(--green); }
+    .method-put { background: var(--orange); }
+    .method-delete { background: var(--red); }
+    .route {
+      display: inline-block;
+      margin-top: 2px;
+      color: #34495f;
+      background: #f0f4f8;
+    }
+    .meta {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 10px;
+      margin: 16px 0 0;
+    }
+    .meta div {
+      padding: 10px 12px;
+      background: var(--soft);
+      border-radius: 7px;
+    }
+    dt {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+    dd { margin: 2px 0 0; }
+    .params th:first-child, .params td:first-child { width: 220px; }
+    .notes {
+      margin: 14px 0 0;
+      padding-left: 20px;
+      color: #3f4f5f;
+    }
+    .footer {
+      margin-top: 52px;
+      padding-top: 18px;
+      color: var(--muted);
+      border-top: 1px solid var(--line);
+      font-size: 13px;
+    }
+    @media (max-width: 760px) {
+      .page { width: 100%; margin: 0; }
+      .hero, main.content { padding: 32px 22px; }
+      .doc-meta { grid-template-columns: 1fr; }
+      .endpoint-header { flex-direction: column; }
+    }
+    @media print {
+      body { background: #fff; font-size: 10.5pt; }
+      .page { width: 100%; margin: 0; box-shadow: none; }
+      .hero { padding: 20mm 15mm 14mm; }
+      main.content { padding: 14mm 15mm; }
+      .toc, .endpoint, table { page-break-inside: avoid; }
+      .module { page-break-before: always; border: 0; }
+      .module:first-of-type { page-break-before: auto; }
+      .module-panel { display: block !important; padding: 0; }
+      .module-toggle-row { display: block; padding: 0; background: transparent; border: 0; }
+      .module-toggle { cursor: default; }
+      .module-toggle-icon, .accordion-actions { display: none !important; }
+      pre { color: #111; background: #f3f5f7; border: 1px solid #d2d8df; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="hero">
+      <p class="eyebrow">Documentação técnica oficial</p>
+      <h1 class="brand-title">
+        <span class="brand-br">BR</span><span class="brand-azuca">azuca</span><span class="brand-flow">Flow</span>
+        <span class="brand-api">API</span>
+      </h1>
+      <p class="subtitle">Referência técnica para integração, testes e publicação dos endpoints da API financeira do BRazucaFlow.</p>
+      <div class="doc-meta">
+        <div><strong>Versão</strong><span>1.0 - base atual do projeto</span></div>
+        <div><strong>Formato</strong><span>REST / JSON</span></div>
+        <div><strong>Atualização</strong><span>Junho/2026</span></div>
+      </div>
+    </header>
+
+    <main class="content">
+      <section>
+        <h2>Visão Geral</h2>
+        <p>A API BRazucaFlow centraliza as operações financeiras do sistema: usuários, perfis, plano de contas, contas a pagar, contas a receber, receitas, despesas, auditoria, backups e dashboard.</p>
+        <p>Esta documentação descreve os endpoints disponíveis, parâmetros aceitos, exemplos de payload e regras relevantes para consumo da API.</p>
+
+        <div class="callout">
+          <strong>Base URL</strong><br>
+          Em desenvolvimento local, a API normalmente responde em <code>http://localhost:3000</code>. Em produção, substitua pela URL pública configurada para o servidor.
+        </div>
+      </section>
+
+      <section>
+        <h2>Índice</h2>
+        <nav class="toc">
+          <a href="#auth">Autenticação e Usuários</a><a href="#profiles">Perfis</a><a href="#payables">Contas a Pagar</a><a href="#receivables">Contas a Receber</a><a href="#cash">Receitas, Despesas e Caixa</a><a href="#plan">Plano de Contas</a><a href="#audit">Auditoria, Backups e Dashboard</a>
+        </nav>
+      </section>
+
+      <section>
+        <h2>Autenticação</h2>
+        <p>A API utiliza autenticação por token JWT. Após autenticar o usuário pela rota de login, envie o token nas demais requisições usando o cabeçalho HTTP abaixo:</p>
+        <pre><code>Authorization: Bearer &lt;token_jwt&gt;</code></pre>
+        <p>A rota de login é pública. Todas as demais rotas exigem usuário autenticado, e algumas são restritas ao perfil Super Admin.</p>
+      </section>
+
+      <section>
+        <h2>Padrão de Resposta</h2>
+        <h3>Sucesso</h3>
+        <pre><code>{
+  "success": true,
+  "data": {},
+  "status": 200
+}</code></pre>
+        <h3>Erro</h3>
+        <pre><code>{
+  "success": false,
+  "error": "Descrição do erro",
+  "status": 400
+}</code></pre>
+        <table>
+          <thead><tr><th>Status</th><th>Uso</th></tr></thead>
+          <tbody>
+            <tr><td><code>200</code></td><td>Consulta, atualização, exclusão ou ação executada com sucesso.</td></tr>
+            <tr><td><code>201</code></td><td>Registro criado com sucesso.</td></tr>
+            <tr><td><code>400</code></td><td>Validação ou regra de negócio impediu a operação.</td></tr>
+            <tr><td><code>401</code></td><td>Token ausente, token inválido ou credenciais inválidas.</td></tr>
+            <tr><td><code>403</code></td><td>Usuário autenticado sem permissão para a operação.</td></tr>
+            <tr><td><code>404</code></td><td>Registro não encontrado.</td></tr>
+            <tr><td><code>409</code></td><td>Conflito de dados, como registro duplicado.</td></tr>
+            <tr><td><code>500</code></td><td>Erro interno inesperado.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <h2>Convenções</h2>
+        <table>
+          <thead><tr><th>Item</th><th>Descrição</th></tr></thead>
+          <tbody>
+            <tr><td>Paginação</td><td>Quando disponível, use <code>page</code> e <code>limit</code>. O limite máximo aplicado pela API é 100 registros por página.</td></tr>
+            <tr><td>Ordenação</td><td>Use <code>sortBy</code> e <code>sortDirection</code>, conforme os campos aceitos em cada módulo.</td></tr>
+            <tr><td>Datas</td><td>Envie datas no formato <code>YYYY-MM-DD</code>.</td></tr>
+            <tr><td>Valores monetários</td><td>Envie números em formato decimal, por exemplo <code>1500.75</code>.</td></tr>
+            <tr><td>Booleanos</td><td>A API aceita booleanos em campos como <code>paid</code>, <code>status</code>, <code>person</code> e similares.</td></tr>
+            <tr><td>IDs de exemplo</td><td>Os IDs nos payloads são exemplos. Devem ser substituídos por registros existentes no banco.</td></tr>
+          </tbody>
+        </table>
+        <div class="callout warning">
+          <strong>Segurança:</strong> esta documentação não deve conter usuários reais, senhas, tokens ou dados sensíveis. Para testes, configure credenciais em ambiente seguro.
+        </div>
+      </section>
+
+      <div class="accordion-actions" aria-label="Controles dos módulos da documentação">
+        <button class="accordion-action" type="button" data-action="toggle-all">Abrir Todos</button>
+      </div>
+
+      
+  <section id="auth" class="module">
+    <header class="module-toggle-row">
+      <button class="module-toggle" type="button" aria-expanded="false" aria-controls="auth-panel">
+        <span class="module-toggle-icon" aria-hidden="true"></span>
+        <h2>Autenticação e Usuários</h2>
+      </button>
+      <p class="module-description">Rotas de login e manutenção de usuários do sistema.</p>
+    </header>
+    <div id="auth-panel" class="module-panel">
+<article class="endpoint">
+    <header class="endpoint-header">
+      <span class="method method-post">POST</span>
+      <div>
+        <h4>Autentica um usuário e retorna um token JWT.</h4>
+        <code class="route">/api/users/login</code>
+      </div>
+    </header>
+    <dl class="meta">
+      <div><dt>Autenticação</dt><dd>Não requerida</dd></div>
+      <div><dt>Permissão</dt><dd>Pública</dd></div>
+    </dl>
+    
+    
+  <h5>Exemplo de payload</h5>
+  <pre><code>{
+  &quot;username&quot;: &quot;login_do_usuario&quot;,
+  &quot;password&quot;: &quot;senha_do_usuario&quot;
+}</code></pre>
+    <ul class="notes"><li>Não documentar senhas reais nesta rota.</li><li>O token retornado deve ser enviado no cabeçalho Authorization das demais rotas.</li></ul>
+  </article>
+
+  <article class="endpoint">
+    <header class="endpoint-header">
+      <span class="method method-get">GET</span>
+      <div>
+        <h4>Lista usuários.</h4>
+        <code class="route">/api/users</code>
+      </div>
+    </header>
+    <dl class="meta">
+      <div><dt>Autenticação</dt><dd>Bearer Token</dd></div>
+      <div><dt>Permissão</dt><dd>Usuário autenticado</dd></div>
+    </dl>
+    
+    <h5>Parâmetros de consulta</h5>
+    <table class="params">
+      <thead><tr><th>Nome</th><th>Descrição</th></tr></thead>
+      <tbody>
+        <tr><td><code>page</code></td><td>Número da página.</td></tr><tr><td><code>limit</code></td><td>Quantidade por página, até 100.</td></tr><tr><td><code>search</code></td><td>Busca por nome, login ou perfil.</td></tr><tr><td><code>sortBy</code></td><td>id, nome, login, perfil ou status.</td></tr><tr><td><code>sortDirection</code></td><td>asc ou desc.</td></tr>
+      </tbody>
+    </table>
+    
+    <ul class="notes"><li>Super Admin visualiza todos os usuários.</li><li>Administrador não visualiza Super Admin.</li><li>Operacional visualiza apenas a própria conta.</li></ul>
+  </article>
+
+  <article class="endpoint">
+    <header class="endpoint-header">
+      <span class="method method-get">GET</span>
+      <div>
+        <h4>Consulta um usuário específico.</h4>
+        <code class="route">/api/users/:id</code>
+      </div>
+    </header>
+    <dl class="meta">
+      <div><dt>Autenticação</dt><dd>Bearer Token</dd></div>
+      <div><dt>Permissão</dt><dd>Usuário autenticado</dd></div>
+    </dl>
+    
+    
+    
+  </article>
+
+  <article class="endpoint">
+    <header class="endpoint-header">
+      <span class="method method-post">POST</span>
+      <div>
+        <h4>Cria um usuário.</h4>
+        <code class="route">/api/users</code>
+      </div>
+    </header>
+    <dl class="meta">
+      <div><dt>Autenticação</dt><dd>Bearer Token</dd></div>
+      <div><dt>Permissão</dt><dd>Administrador ou Super Admin</dd></div>
+    </dl>
+    
+    
+  <h5>Exemplo de payload</h5>
+  <pre><code>{
+  &quot;username&quot;: &quot;operador&quot;,
+  &quot;name&quot;: &quot;Usuário Operacional&quot;,
+  &quot;password&quot;: &quot;senha_inicial&quot;,
+  &quot;active&quot;: 1,
+  &quot;profileId&quot;: 3
+}</code></pre>
+    
+  </article>
+
+  <article class="endpoint">
+    <header class="endpoint-header">
+      <span class="method method-put">PUT</span>
+      <div>
+        <h4>Atualiza um usuário.</h4>
+        <code class="route">/api/users/:id</code>
+      </div>
+    </header>
+    <dl class="meta">
+      <div><dt>Autenticação</dt><dd>Bearer Token</dd></div>
+      <div><dt>Permissão</dt><dd>Administrador ou Super Admin; Operacional somente a própria conta com restrições.</dd></div>
+    </dl>
+    
+    
+  <h5>Exemplo de payload</h5>
+  <pre><code>{
+  &quot;username&quot;: &quot;operador&quot;,
+  &quot;name&quot;: &quot;Usuário Atualizado&quot;,
+  &quot;password&quot;: &quot;nova_senha_opcional&quot;,
+  &quot;active&quot;: 1,
+  &quot;profileId&quot;: 3
+}</code></pre>
+    <ul class="notes"><li>Senha é opcional na alteração.</li></ul>
+  </article>
+
+  <article class="endpoint">
+    <header class="endpoint-header">
+      <span class="method method-delete">DELETE</span>
+      <div>
+        <h4>Remove um usuário.</h4>
+        <code class="route">/api/users/:id</code>
+      </div>
+    </header>
+    <dl class="meta">
+      <div><dt>Autenticação</dt><dd>Bearer Token</dd></div>
+      <div><dt>Permissão</dt><dd>Administrador ou Super Admin</dd></div>
+    </dl>
+    
+    
+    <ul class="notes"><li>Super Admin não pode ser removido pela tela.</li><li>Usuário não pode remover a si mesmo.</li><li>A API protege contra remoção do único administrador ativo, exceto nas regras permitidas ao Super Admin.</li></ul>
+  </article>
+    </div>
+  </section>
+
+  <section id="profiles" class="module">
+    <header class="module-toggle-row">
+      <button class="module-toggle" type="button" aria-expanded="false" aria-controls="profiles-panel">
+        <span class="module-toggle-icon" aria-hidden="true"></span>
+        <h2>Perfis</h2>
+      </button>
+      <p class="module-description">Consulta e manutenção dos perfis de acesso.</p>
+    </header>
+    <div id="profiles-panel" class="module-panel">
+<article class="endpoint">
+    <header class="endpoint-header">
+      <span class="method method-get">GET</span>
+      <div>
+        <h4>Lista os perfis disponíveis para uso no cadastro de usuários.</h4>
+        <code class="route">/api/profiles</code>
+      </div>
+    </header>
+    <dl class="meta">
+      <div><dt>Autenticação</dt><dd>Bearer Token</dd></div>
+      <div><dt>Permissão</dt><dd>Usuário autenticado</dd></div>
+    </dl>
+    
+    
+    
+  </article>
+
+  <article class="endpoint">
+    <header class="endpoint-header">
+      <span class="method method-get">GET</span>
+      <div>
+        <h4>Consulta um perfil específico.</h4>
+        <code class="route">/api/profiles/:id</code>
+      </div>
+    </header>
+    <dl class="meta">
+      <div><dt>Autenticação</dt><dd>Bearer Token</dd></div>
+      <div><dt>Permissão</dt><dd>Usuário autenticado</dd></div>
+    </dl>
+    
+    
+    
+  </article>
+
+  <article class="endpoint">
+    <header class="endpoint-header">
+      <span class="method method-post">POST</span>
+      <div>
+        <h4>Cria um perfil.</h4>
+        <code class="route">/api/profiles</code>
+      </div>
+    </header>
+    <dl class="meta">
+      <div><dt>Autenticação</dt><dd>Bearer Token</dd></div>
+      <div><dt>Permissão</dt><dd>Usuário autenticado</dd></div>
+    </dl>
+    
+    
+  <h5>Exemplo de payload</h5>
+  <pre><code>{
+  &quot;name&quot;: &quot;Nome do Perfil&quot;,
+  &quot;description&quot;: &quot;Descrição do perfil&quot;,
+  &quot;statusProfile&quot;: true
+}</code></pre>
+    
+  </article>
+
+  <article class="endpoint">
+    <header class="endpoint-header">
+      <span class="method method-put">PUT</span>
+      <div>
+        <h4>Atualiza um perfil.</h4>
+        <code class="route">/api/profiles/:id</code>
+      </div>
+    </header>
+    <dl class="meta">
+      <div><dt>Autenticação</dt><dd>Bearer Token</dd></div>
+      <div><dt>Permissão</dt><dd>Usuário autenticado</dd></div>
+    </dl>
+    
+    
+  <h5>Exemplo de payload</h5>
+  <pre><code>{
+  &quot;name&quot;: &quot;Perfil Atualizado&quot;,
+  &quot;description&quot;: &quot;Descrição atualizada&quot;,
+  &quot;statusProfile&quot;: true
+}</code></pre>
+    
+  </article>
+
+  <article class="endpoint">
+    <header class="endpoint-header">
+      <span class="method method-delete">DELETE</span>
+      <div>
+        <h4>Remove um perfil.</h4>
+        <code class="route">/api/profiles/:id</code>
+      </div>
+    </header>
+    <dl class="meta">
+      <div><dt>Autenticação</dt><dd>Bearer Token</dd></div>
+      <div><dt>Permissão</dt><dd>Usuário autenticado</dd></div>
+    </dl>
+    
+    
+    
+  </article>
+    </div>
+  </section>
+
+  <section id="payables" class="module">
+    <header class="module-toggle-row">
+      <button class="module-toggle" type="button" aria-expanded="false" aria-controls="payables-panel">
+        <span class="module-toggle-icon" aria-hidden="true"></span>
+        <h2>Contas a Pagar</h2>
+      </button>
+      <p class="module-description">Controle de contas a pagar, geração em massa e pagamento com geração opcional de despesa.</p>
+    </header>
+    <div id="payables-panel" class="module-panel">
+<article class="endpoint">
+    <header class="endpoint-header">
+      <span class="method method-get">GET</span>
+      <div>
+        <h4>Lista contas a pagar.</h4>
+        <code class="route">/api/accounts-payable</code>
+      </div>
+    </header>
+    <dl class="meta">
+      <div><dt>Autenticação</dt><dd>Bearer Token</dd></div>
+      <div><dt>Permissão</dt><dd>Usuário autenticado</dd></div>
+    </dl>
+    
+    <h5>Parâmetros de consulta</h5>
+    <table class="params">
+      <thead><tr><th>Nome</th><th>Descrição</th></tr></thead>
+      <tbody>
+        <tr><td><code>page</code></td><td>Número da página.</td></tr><tr><td><code>limit</code></td><td>Quantidade por página, até 100.</td></tr><tr><td><code>search</code></td><td>Busca por descrição, documento, origem, tipo de conta ou tipo de pagamento.</td></tr><tr><td><code>status</code></td><td>pago, pendente ou vencido.</td></tr><tr><td><code>paymentTypeId</code></td><td>ID do tipo de pagamento.</td></tr><tr><td><code>accountTypeId</code></td><td>ID do tipo de conta.</td></tr><tr><td><code>originId</code></td><td>ID da origem.</td></tr><tr><td><code>dateFrom</code></td><td>Data inicial de vencimento.</td></tr><tr><td><code>dateTo</code></td><td>Data final de vencimento.</td></tr><tr><td><code>sortBy</code></td><td>id, descricao, dataVencimento, valor ou status.</td></tr><tr><td><code>sortDirection</code></td><td>asc ou desc.</td></tr>
+      </tbody>
+    </table>
+    
+    
+  </article>
+
+  <article class="endpoint">
+    <header class="endpoint-header">
+      <span class="method method-get">GET</span>
+      <div>
+        <h4>Consulta uma conta a pagar.</h4>
+        <code class="route">/api/accounts-payable/:id</code>
+      </div>
+    </header>
+    <dl class="meta">
+      <div><dt>Autenticação</dt><dd>Bearer Token</dd></div>
+      <div><dt>Permissão</dt><dd>Usuário autenticado</dd></div>
+    </dl>
+    
+    
+    
+  </article>
+
+  <article class="endpoint">
+    <header class="endpoint-header">
+      <span class="method method-post">POST</span>
+      <div>
+        <h4>Cria uma conta a pagar.</h4>
+        <code class="route">/api/accounts-payable</code>
+      </div>
+    </header>
+    <dl class="meta">
+      <div><dt>Autenticação</dt><dd>Bearer Token</dd></div>
+      <div><dt>Permissão</dt><dd>Usuário autenticado</dd></div>
+    </dl>
+    
+    
+  <h5>Exemplo de payload</h5>
+  <pre><code>{
+  &quot;accountTypeId&quot;: 1,
+  &quot;paymentTypeId&quot;: 1,
+  &quot;originId&quot;: null,
+  &quot;documentNumber&quot;: &quot;DOC-001&quot;,
+  &quot;description&quot;: &quot;Descrição da conta&quot;,
+  &quot;value&quot;: 1500.75,
+  &quot;nominalDate&quot;: &quot;2026-06-22&quot;,
+  &quot;dueDate&quot;: &quot;2026-07-22&quot;,
+  &quot;paid&quot;: false
+}</code></pre>
+    <ul class="notes"><li>Documento e origem são opcionais.</li><li>Data nominal não pode ser maior que a data de vencimento.</li></ul>
+  </article>
+
+  <article class="endpoint">
+    <header class="endpoint-header">
+      <span class="method method-post">POST</span>
+      <div>
+        <h4>Gera contas a pagar em massa a partir de uma origem.</h4>
+        <code class="route">/api/accounts-payable/multiple</code>
+      </div>
+    </header>
+    <dl class="meta">
+      <div><dt>Autenticação</dt><dd>Bearer Token</dd></div>
+      <div><dt>Permissão</dt><dd>Usuário autenticado</dd></div>
+    </dl>
+    
+    
+  <h5>Exemplo de payload</h5>
+  <pre><code>{
+  &quot;originId&quot;: 1,
+  &quot;installments&quot;: 3,
+  &quot;accountTypeId&quot;: 1,
+  &quot;paymentTypeId&quot;: 1,
+  &quot;value&quot;: 900,
+  &quot;nominalDate&quot;: &quot;2026-06-22&quot;,
+  &quot;dueDate&quot;: &quot;2026-07-22&quot;,
+  &quot;documentNumber&quot;: &quot;DOC-MASSA&quot;,
+  &quot;description&quot;: &quot;Compra parcelada&quot;
+}</code></pre>
+    <ul class="notes"><li>O valor informado é o total e será dividido entre as parcelas.</li><li>A origem deve existir e estar de acordo com o fluxo de contas a pagar.</li></ul>
+  </article>
+
+  <article class="endpoint">
+    <header class="endpoint-header">
+      <span class="method method-put">PUT</span>
+      <div>
+        <h4>Atualiza uma conta a pagar.</h4>
+        <code class="route">/api/accounts-payable/:id</code>
+      </div>
+    </header>
+    <dl class="meta">
+      <div><dt>Autenticação</dt><dd>Bearer Token</dd></div>
+      <div><dt>Permissão</dt><dd>Usuário autenticado</dd></div>
+    </dl>
+    
+    
+  <h5>Exemplo de payload</h5>
+  <pre><code>{
+  &quot;accountTypeId&quot;: 1,
+  &quot;paymentTypeId&quot;: 1,
+  &quot;originId&quot;: null,
+  &quot;documentNumber&quot;: &quot;DOC-001&quot;,
+  &quot;description&quot;: &quot;Descrição atualizada&quot;,
+  &quot;value&quot;: 1600,
+  &quot;nominalDate&quot;: &quot;2026-06-22&quot;,
+  &quot;dueDate&quot;: &quot;2026-07-25&quot;,
+  &quot;paid&quot;: false
+}</code></pre>
+    
+  </article>
+
+  <article class="endpoint">
+    <header class="endpoint-header">
+      <span class="method method-delete">DELETE</span>
+      <div>
+        <h4>Remove uma conta a pagar.</h4>
+        <code class="route">/api/accounts-payable/:id</code>
+      </div>
+    </header>
+    <dl class="meta">
+      <div><dt>Autenticação</dt><dd>Bearer Token</dd></div>
+      <div><dt>Permissão</dt><dd>Usuário autenticado</dd></div>
+    </dl>
+    
+    
+    <ul class="notes"><li>A remoção é bloqueada se a conta estiver paga ou possuir despesa vinculada.</li></ul>
+  </article>
+
+  <article class="endpoint">
+    <header class="endpoint-header">
+      <span class="method method-put">PUT</span>
+      <div>
+        <h4>Marca uma conta a pagar como paga.</h4>
+        <code class="route">/api/accounts-payable/:id/pay</code>
+      </div>
+    </header>
+    <dl class="meta">
+      <div><dt>Autenticação</dt><dd>Bearer Token</dd></div>
+      <div><dt>Permissão</dt><dd>Usuário autenticado</dd></div>
+    </dl>
+    
+    
+  <h5>Exemplo de payload</h5>
+  <pre><code>{
+  &quot;paymentTypeId&quot;: 1,
+  &quot;generateExpense&quot;: true,
+  &quot;cashAccountId&quot;: 1
+}</code></pre>
+    <ul class="notes"><li>Quando generateExpense for true, a API cria uma despesa vinculada à conta paga.</li></ul>
+  </article>
+
+  <article class="endpoint">
+    <header class="endpoint-header">
+      <span class="method method-put">PUT</span>
+      <div>
+        <h4>Desmarca uma conta a pagar como paga.</h4>
+        <code class="route">/api/accounts-payable/:id/unpay</code>
+      </div>
+    </header>
+    <dl class="meta">
+      <div><dt>Autenticação</dt><dd>Bearer Token</dd></div>
+      <div><dt>Permissão</dt><dd>Usuário autenticado</dd></div>
+    </dl>
+    
+    
+  <h5>Exemplo de payload</h5>
+  <pre><code>{}</code></pre>
+    <ul class="notes"><li>A operação é bloqueada se existir despesa vinculada.</li></ul>
+  </article>
+
+  <article class="endpoint">
+    <header class="endpoint-header">
+      <span class="method method-post">POST</span>
+      <div>
+        <h4>Busca avançada para relatórios.</h4>
+        <code class="route">/api/accounts-payable/search</code>
+      </div>
+    </header>
+    <dl class="meta">
+      <div><dt>Autenticação</dt><dd>Bearer Token</dd></div>
+      <div><dt>Permissão</dt><dd>Usuário autenticado</dd></div>
+    </dl>
+    
+    
+  <h5>Exemplo de payload</h5>
+  <pre><code>{
+  &quot;status&quot;: &quot;pending&quot;,
+  &quot;paymentTypeId&quot;: 1,
+  &quot;originId&quot;: 1,
+  &quot;dateField&quot;: &quot;dueDate&quot;,
+  &quot;dateFrom&quot;: &quot;2026-01-01&quot;,
+  &quot;dateTo&quot;: &quot;2026-12-31&quot;,
+  &quot;orderBy&quot;: &quot;dueDate&quot;,
+  &quot;orderDirection&quot;: &quot;ASC&quot;
+}</code></pre>
+    
+  </article>
+    </div>
+  </section>
+
+  <section id="receivables" class="module">
+    <header class="module-toggle-row">
+      <button class="module-toggle" type="button" aria-expanded="false" aria-controls="receivables-panel">
+        <span class="module-toggle-icon" aria-hidden="true"></span>
+        <h2>Contas a Receber</h2>
+      </button>
+      <p class="module-description">Controle de contas a receber, geração em massa e recebimento com geração opcional de receita.</p>
+    </header>
+    <div id="receivables-panel" class="module-panel">
+<article class="endpoint">
+    <header class="endpoint-header">
+      <span class="method method-get">GET</span>
+      <div>
+        <h4>Lista contas a receber.</h4>
+        <code class="route">/api/accounts-receivable</code>
+      </div>
+    </header>
+    <dl class="meta">
+      <div><dt>Autenticação</dt><dd>Bearer Token</dd></div>
+      <div><dt>Permissão</dt><dd>Usuário autenticado</dd></div>
+    </dl>
+    
+    <h5>Parâmetros de consulta</h5>
+    <table class="params">
+      <thead><tr><th>Nome</th><th>Descrição</th></tr></thead>
+      <tbody>
+        <tr><td><code>page</code></td><td>Número da página.</td></tr><tr><td><code>limit</code></td><td>Quantidade por página, até 100.</td></tr><tr><td><code>search</code></td><td>Busca por descrição, documento, origem, tipo de conta ou tipo de pagamento.</td></tr><tr><td><code>status</code></td><td>recebido, pendente ou vencido.</td></tr><tr><td><code>paymentTypeId</code></td><td>ID do tipo de pagamento.</td></tr><tr><td><code>accountTypeId</code></td><td>ID do tipo de conta.</td></tr><tr><td><code>originId</code></td><td>ID da origem.</td></tr><tr><td><code>dateFrom</code></td><td>Data inicial de vencimento.</td></tr><tr><td><code>dateTo</code></td><td>Data final de vencimento.</td></tr><tr><td><code>sortBy</code></td><td>id, descricao, dataVencimento, valor ou status.</td></tr><tr><td><code>sortDirection</code></td><td>asc ou desc.</td></tr>
+      </tbody>
+    </table>
+    
+    
+  </article>
+
+  <article class="endpoint">
+    <header class="endpoint-header">
+      <span class="method method-get">GET</span>
+      <div>
+        <h4>Consulta uma conta a receber.</h4>
+        <code class="route">/api/accounts-receivable/:id</code>
+      </div>
+    </header>
+    <dl class="meta">
+      <div><dt>Autenticação</dt><dd>Bearer Token</dd></div>
+      <div><dt>Permissão</dt><dd>Usuário autenticado</dd></div>
+    </dl>
+    
+    
+    
+  </article>
+
+  <article class="endpoint">
+    <header class="endpoint-header">
+      <span class="method method-post">POST</span>
+      <div>
+        <h4>Cria uma conta a receber.</h4>
+        <code class="route">/api/accounts-receivable</code>
+      </div>
+    </header>
+    <dl class="meta">
+      <div><dt>Autenticação</dt><dd>Bearer Token</dd></div>
+      <div><dt>Permissão</dt><dd>Usuário autenticado</dd></div>
+    </dl>
+    
+    
+  <h5>Exemplo de payload</h5>
+  <pre><code>{
+  &quot;accountTypeId&quot;: 1,
+  &quot;paymentTypeId&quot;: 1,
+  &quot;originId&quot;: null,
+  &quot;documentNumber&quot;: &quot;DOC-001&quot;,
+  &quot;description&quot;: &quot;Descrição da conta&quot;,
+  &quot;value&quot;: 2500,
+  &quot;nominalDate&quot;: &quot;2026-06-22&quot;,
+  &quot;dueDate&quot;: &quot;2026-07-22&quot;,
+  &quot;paid&quot;: false
+}</code></pre>
+    
+  </article>
+
+  <article class="endpoint">
+    <header class="endpoint-header">
+      <span class="method method-post">POST</span>
+      <div>
+        <h4>Gera contas a receber em massa a partir de uma origem.</h4>
+        <code class="route">/api/accounts-receivable/multiple</code>
+      </div>
+    </header>
+    <dl class="meta">
+      <div><dt>Autenticação</dt><dd>Bearer Token</dd></div>
+      <div><dt>Permissão</dt><dd>Usuário autenticado</dd></div>
+    </dl>
+    
+    
+  <h5>Exemplo de payload</h5>
+  <pre><code>{
+  &quot;originId&quot;: 1,
+  &quot;installments&quot;: 3,
+  &quot;accountTypeId&quot;: 1,
+  &quot;paymentTypeId&quot;: 1,
+  &quot;value&quot;: 900,
+  &quot;nominalDate&quot;: &quot;2026-06-22&quot;,
+  &quot;dueDate&quot;: &quot;2026-07-22&quot;,
+  &quot;documentNumber&quot;: &quot;DOC-MASSA&quot;,
+  &quot;description&quot;: &quot;Venda parcelada&quot;
+}</code></pre>
+    
+  </article>
+
+  <article class="endpoint">
+    <header class="endpoint-header">
+      <span class="method method-put">PUT</span>
+      <div>
+        <h4>Atualiza uma conta a receber.</h4>
+        <code class="route">/api/accounts-receivable/:id</code>
+      </div>
+    </header>
+    <dl class="meta">
+      <div><dt>Autenticação</dt><dd>Bearer Token</dd></div>
+      <div><dt>Permissão</dt><dd>Usuário autenticado</dd></div>
+    </dl>
+    
+    
+    
+  </article>
+
+  <article class="endpoint">
+    <header class="endpoint-header">
+      <span class="method method-delete">DELETE</span>
+      <div>
+        <h4>Remove uma conta a receber.</h4>
+        <code class="route">/api/accounts-receivable/:id</code>
+      </div>
+    </header>
+    <dl class="meta">
+      <div><dt>Autenticação</dt><dd>Bearer Token</dd></div>
+      <div><dt>Permissão</dt><dd>Usuário autenticado</dd></div>
+    </dl>
+    
+    
+    <ul class="notes"><li>A remoção é bloqueada se a conta estiver recebida ou possuir receita vinculada.</li></ul>
+  </article>
+
+  <article class="endpoint">
+    <header class="endpoint-header">
+      <span class="method method-put">PUT</span>
+      <div>
+        <h4>Marca uma conta a receber como recebida.</h4>
+        <code class="route">/api/accounts-receivable/:id/receive</code>
+      </div>
+    </header>
+    <dl class="meta">
+      <div><dt>Autenticação</dt><dd>Bearer Token</dd></div>
+      <div><dt>Permissão</dt><dd>Usuário autenticado</dd></div>
+    </dl>
+    
+    
+  <h5>Exemplo de payload</h5>
+  <pre><code>{
+  &quot;paymentTypeId&quot;: 1,
+  &quot;generateIncome&quot;: true,
+  &quot;cashAccountId&quot;: 1
+}</code></pre>
+    <ul class="notes"><li>Quando generateIncome for true, a API cria uma receita vinculada à conta recebida.</li></ul>
+  </article>
+
+  <article class="endpoint">
+    <header class="endpoint-header">
+      <span class="method method-put">PUT</span>
+      <div>
+        <h4>Desmarca uma conta a receber como recebida.</h4>
+        <code class="route">/api/accounts-receivable/:id/unreceive</code>
+      </div>
+    </header>
+    <dl class="meta">
+      <div><dt>Autenticação</dt><dd>Bearer Token</dd></div>
+      <div><dt>Permissão</dt><dd>Usuário autenticado</dd></div>
+    </dl>
+    
+    
+  <h5>Exemplo de payload</h5>
+  <pre><code>{}</code></pre>
+    <ul class="notes"><li>A operação é bloqueada se existir receita vinculada.</li></ul>
+  </article>
+
+  <article class="endpoint">
+    <header class="endpoint-header">
+      <span class="method method-post">POST</span>
+      <div>
+        <h4>Busca avançada para relatórios.</h4>
+        <code class="route">/api/accounts-receivable/search</code>
+      </div>
+    </header>
+    <dl class="meta">
+      <div><dt>Autenticação</dt><dd>Bearer Token</dd></div>
+      <div><dt>Permissão</dt><dd>Usuário autenticado</dd></div>
+    </dl>
+    
+    
+    
+  </article>
+    </div>
+  </section>
+
+  <section id="cash" class="module">
+    <header class="module-toggle-row">
+      <button class="module-toggle" type="button" aria-expanded="false" aria-controls="cash-panel">
+        <span class="module-toggle-icon" aria-hidden="true"></span>
+        <h2>Receitas, Despesas e Caixa</h2>
+      </button>
+      <p class="module-description">Lançamentos realizados no caixa e contas caixa utilizadas nos vínculos financeiros.</p>
+    </header>
+    <div id="cash-panel" class="module-panel">
+<article class="endpoint">
+    <header class="endpoint-header">
+      <span class="method method-get">GET</span>
+      <div>
+        <h4>Lista receitas.</h4>
+        <code class="route">/api/incomes</code>
+      </div>
+    </header>
+    <dl class="meta">
+      <div><dt>Autenticação</dt><dd>Bearer Token</dd></div>
+      <div><dt>Permissão</dt><dd>Usuário autenticado</dd></div>
+    </dl>
+    
+    <h5>Parâmetros de consulta</h5>
+    <table class="params">
+      <thead><tr><th>Nome</th><th>Descrição</th></tr></thead>
+      <tbody>
+        <tr><td><code>page</code></td><td>Número da página.</td></tr><tr><td><code>limit</code></td><td>Quantidade por página, até 100.</td></tr><tr><td><code>search</code></td><td>Busca por descrição, categoria, tipo de conta ou conta caixa.</td></tr><tr><td><code>accountTypeId</code></td><td>ID do tipo de conta.</td></tr><tr><td><code>cashAccountId</code></td><td>ID da conta caixa.</td></tr><tr><td><code>dateFrom</code></td><td>Data inicial.</td></tr><tr><td><code>dateTo</code></td><td>Data final.</td></tr><tr><td><code>sortBy</code></td><td>id, descricao, valor, dataReceita, tipoConta ou contaCaixa.</td></tr><tr><td><code>sortDirection</code></td><td>asc ou desc.</td></tr>
+      </tbody>
+    </table>
+    
+    
+  </article>
+
+  <article class="endpoint">
+    <header class="endpoint-header">
+      <span class="method method-get">GET</span>
+      <div>
+        <h4>Consulta uma receita.</h4>
+        <code class="route">/api/incomes/:id</code>
+      </div>
+    </header>
+    <dl class="meta">
+      <div><dt>Autenticação</dt><dd>Bearer Token</dd></div>
+      <div><dt>Permissão</dt><dd>Usuário autenticado</dd></div>
+    </dl>
+    
+    
+    
+  </article>
+
+  <article class="endpoint">
+    <header class="endpoint-header">
+      <span class="method method-post">POST</span>
+      <div>
+        <h4>Cria uma receita.</h4>
+        <code class="route">/api/incomes</code>
+      </div>
+    </header>
+    <dl class="meta">
+      <div><dt>Autenticação</dt><dd>Bearer Token</dd></div>
+      <div><dt>Permissão</dt><dd>Usuário autenticado</dd></div>
+    </dl>
+    
+    
+  <h5>Exemplo de payload</h5>
+  <pre><code>{
+  &quot;cashAccountId&quot;: 1,
+  &quot;accountTypeId&quot;: 1,
+  &quot;accountReceivableId&quot;: null,
+  &quot;description&quot;: &quot;Receita manual&quot;,
+  &quot;value&quot;: 1500.75,
+  &quot;incomeDate&quot;: &quot;2026-06-22&quot;
+}</code></pre>
+    <ul class="notes"><li>accountReceivableId deve ser nulo em receitas manuais.</li><li>Uma conta a receber pode possuir apenas uma receita vinculada.</li></ul>
+  </article>
+
+  <article class="endpoint">
+    <header class="endpoint-header">
+      <span class="method method-put">PUT</span>
+      <div>
+        <h4>Atualiza uma receita.</h4>
+        <code class="route">/api/incomes/:id</code>
+      </div>
+    </header>
+    <dl class="meta">
+      <div><dt>Autenticação</dt><dd>Bearer Token</dd></div>
+      <div><dt>Permissão</dt><dd>Usuário autenticado</dd></div>
+    </dl>
+    
+    
+    
+  </article>
+
+  <article class="endpoint">
+    <header class="endpoint-header">
+      <span class="method method-delete">DELETE</span>
+      <div>
+        <h4>Remove uma receita.</h4>
+        <code class="route">/api/incomes/:id</code>
+      </div>
+    </header>
+    <dl class="meta">
+      <div><dt>Autenticação</dt><dd>Bearer Token</dd></div>
+      <div><dt>Permissão</dt><dd>Usuário autenticado</dd></div>
+    </dl>
+    
+    
+    
+  </article>
+
+  <article class="endpoint">
+    <header class="endpoint-header">
+      <span class="method method-get">GET</span>
+      <div>
+        <h4>Lista despesas.</h4>
+        <code class="route">/api/expenses</code>
+      </div>
+    </header>
+    <dl class="meta">
+      <div><dt>Autenticação</dt><dd>Bearer Token</dd></div>
+      <div><dt>Permissão</dt><dd>Usuário autenticado</dd></div>
+    </dl>
+    
+    <h5>Parâmetros de consulta</h5>
+    <table class="params">
+      <thead><tr><th>Nome</th><th>Descrição</th></tr></thead>
+      <tbody>
+        <tr><td><code>page</code></td><td>Número da página.</td></tr><tr><td><code>limit</code></td><td>Quantidade por página, até 100.</td></tr><tr><td><code>search</code></td><td>Busca por descrição, categoria, tipo de conta ou conta caixa.</td></tr><tr><td><code>accountTypeId</code></td><td>ID do tipo de conta.</td></tr><tr><td><code>cashAccountId</code></td><td>ID da conta caixa.</td></tr><tr><td><code>dateFrom</code></td><td>Data inicial.</td></tr><tr><td><code>dateTo</code></td><td>Data final.</td></tr><tr><td><code>sortBy</code></td><td>id, descricao, valor, dataDespesa, tipoConta ou contaCaixa.</td></tr><tr><td><code>sortDirection</code></td><td>asc ou desc.</td></tr>
+      </tbody>
+    </table>
+    
+    
+  </article>
+
+  <article class="endpoint">
+    <header class="endpoint-header">
+      <span class="method method-get">GET</span>
+      <div>
+        <h4>Consulta uma despesa.</h4>
+        <code class="route">/api/expenses/:id</code>
+      </div>
+    </header>
+    <dl class="meta">
+      <div><dt>Autenticação</dt><dd>Bearer Token</dd></div>
+      <div><dt>Permissão</dt><dd>Usuário autenticado</dd></div>
+    </dl>
+    
+    
+    
+  </article>
+
+  <article class="endpoint">
+    <header class="endpoint-header">
+      <span class="method method-post">POST</span>
+      <div>
+        <h4>Cria uma despesa.</h4>
+        <code class="route">/api/expenses</code>
+      </div>
+    </header>
+    <dl class="meta">
+      <div><dt>Autenticação</dt><dd>Bearer Token</dd></div>
+      <div><dt>Permissão</dt><dd>Usuário autenticado</dd></div>
+    </dl>
+    
+    
+  <h5>Exemplo de payload</h5>
+  <pre><code>{
+  &quot;cashAccountId&quot;: 1,
+  &quot;accountTypeId&quot;: 1,
+  &quot;accountPayableId&quot;: null,
+  &quot;description&quot;: &quot;Despesa manual&quot;,
+  &quot;value&quot;: 500.75,
+  &quot;expenseDate&quot;: &quot;2026-06-22&quot;
+}</code></pre>
+    <ul class="notes"><li>accountPayableId deve ser nulo em despesas manuais.</li><li>Uma conta a pagar pode possuir apenas uma despesa vinculada.</li></ul>
+  </article>
+
+  <article class="endpoint">
+    <header class="endpoint-header">
+      <span class="method method-put">PUT</span>
+      <div>
+        <h4>Atualiza uma despesa.</h4>
+        <code class="route">/api/expenses/:id</code>
+      </div>
+    </header>
+    <dl class="meta">
+      <div><dt>Autenticação</dt><dd>Bearer Token</dd></div>
+      <div><dt>Permissão</dt><dd>Usuário autenticado</dd></div>
+    </dl>
+    
+    
+    
+  </article>
+
+  <article class="endpoint">
+    <header class="endpoint-header">
+      <span class="method method-delete">DELETE</span>
+      <div>
+        <h4>Remove uma despesa.</h4>
+        <code class="route">/api/expenses/:id</code>
+      </div>
+    </header>
+    <dl class="meta">
+      <div><dt>Autenticação</dt><dd>Bearer Token</dd></div>
+      <div><dt>Permissão</dt><dd>Usuário autenticado</dd></div>
+    </dl>
+    
+    
+    
+  </article>
+
+  <article class="endpoint">
+    <header class="endpoint-header">
+      <span class="method method-get">GET</span>
+      <div>
+        <h4>Lista contas caixa.</h4>
+        <code class="route">/api/cash-accounts</code>
+      </div>
+    </header>
+    <dl class="meta">
+      <div><dt>Autenticação</dt><dd>Bearer Token</dd></div>
+      <div><dt>Permissão</dt><dd>Usuário autenticado</dd></div>
+    </dl>
+    
+    
+    
+  </article>
+
+  <article class="endpoint">
+    <header class="endpoint-header">
+      <span class="method method-get">GET</span>
+      <div>
+        <h4>Consulta uma conta caixa.</h4>
+        <code class="route">/api/cash-accounts/:id</code>
+      </div>
+    </header>
+    <dl class="meta">
+      <div><dt>Autenticação</dt><dd>Bearer Token</dd></div>
+      <div><dt>Permissão</dt><dd>Usuário autenticado</dd></div>
+    </dl>
+    
+    
+    
+  </article>
+
+  <article class="endpoint">
+    <header class="endpoint-header">
+      <span class="method method-post">POST</span>
+      <div>
+        <h4>Cria uma conta caixa.</h4>
+        <code class="route">/api/cash-accounts</code>
+      </div>
+    </header>
+    <dl class="meta">
+      <div><dt>Autenticação</dt><dd>Bearer Token</dd></div>
+      <div><dt>Permissão</dt><dd>Usuário autenticado</dd></div>
+    </dl>
+    
+    
+  <h5>Exemplo de payload</h5>
+  <pre><code>{
+  &quot;name&quot;: &quot;Conta Principal&quot;,
+  &quot;description&quot;: &quot;Descrição da conta caixa&quot;,
+  &quot;status&quot;: true
+}</code></pre>
+    
+  </article>
+
+  <article class="endpoint">
+    <header class="endpoint-header">
+      <span class="method method-put">PUT</span>
+      <div>
+        <h4>Atualiza uma conta caixa.</h4>
+        <code class="route">/api/cash-accounts/:id</code>
+      </div>
+    </header>
+    <dl class="meta">
+      <div><dt>Autenticação</dt><dd>Bearer Token</dd></div>
+      <div><dt>Permissão</dt><dd>Usuário autenticado</dd></div>
+    </dl>
+    
+    
+    
+  </article>
+
+  <article class="endpoint">
+    <header class="endpoint-header">
+      <span class="method method-delete">DELETE</span>
+      <div>
+        <h4>Remove uma conta caixa.</h4>
+        <code class="route">/api/cash-accounts/:id</code>
+      </div>
+    </header>
+    <dl class="meta">
+      <div><dt>Autenticação</dt><dd>Bearer Token</dd></div>
+      <div><dt>Permissão</dt><dd>Usuário autenticado</dd></div>
+    </dl>
+    
+    
+    
+  </article>
+    </div>
+  </section>
+
+  <section id="plan" class="module">
+    <header class="module-toggle-row">
+      <button class="module-toggle" type="button" aria-expanded="false" aria-controls="plan-panel">
+        <span class="module-toggle-icon" aria-hidden="true"></span>
+        <h2>Plano de Contas</h2>
+      </button>
+      <p class="module-description">Categorias, tipos de contas, tipos de pagamento e origens utilizadas pelo financeiro.</p>
+    </header>
+    <div id="plan-panel" class="module-panel">
+<article class="endpoint">
+    <header class="endpoint-header">
+      <span class="method method-get">GET</span>
+      <div>
+        <h4>Lista categorias de tipos de contas.</h4>
+        <code class="route">/api/category-types</code>
+      </div>
+    </header>
+    <dl class="meta">
+      <div><dt>Autenticação</dt><dd>Bearer Token</dd></div>
+      <div><dt>Permissão</dt><dd>Usuário autenticado</dd></div>
+    </dl>
+    
+    <h5>Parâmetros de consulta</h5>
+    <table class="params">
+      <thead><tr><th>Nome</th><th>Descrição</th></tr></thead>
+      <tbody>
+        <tr><td><code>page</code></td><td>Página.</td></tr><tr><td><code>limit</code></td><td>Limite.</td></tr><tr><td><code>search</code></td><td>Busca.</td></tr><tr><td><code>type</code></td><td>Receita ou Despesa.</td></tr><tr><td><code>status</code></td><td>Ativo ou Inativo.</td></tr><tr><td><code>specie</code></td><td>Espécie.</td></tr>
+      </tbody>
+    </table>
+    
+    
+  </article>
+
+  <article class="endpoint">
+    <header class="endpoint-header">
+      <span class="method method-get">GET</span>
+      <div>
+        <h4>Consulta uma categoria.</h4>
+        <code class="route">/api/category-types/:id</code>
+      </div>
+    </header>
+    <dl class="meta">
+      <div><dt>Autenticação</dt><dd>Bearer Token</dd></div>
+      <div><dt>Permissão</dt><dd>Usuário autenticado</dd></div>
+    </dl>
+    
+    
+    
+  </article>
+
+  <article class="endpoint">
+    <header class="endpoint-header">
+      <span class="method method-post">POST</span>
+      <div>
+        <h4>Cria uma categoria.</h4>
+        <code class="route">/api/category-types</code>
+      </div>
+    </header>
+    <dl class="meta">
+      <div><dt>Autenticação</dt><dd>Bearer Token</dd></div>
+      <div><dt>Permissão</dt><dd>Usuário autenticado</dd></div>
+    </dl>
+    
+    
+  <h5>Exemplo de payload</h5>
+  <pre><code>{
+  &quot;description&quot;: &quot;Receitas operacionais&quot;,
+  &quot;type&quot;: &quot;Receita&quot;,
+  &quot;specie&quot;: &quot;Operacional&quot;,
+  &quot;status&quot;: true
+}</code></pre>
+    
+  </article>
+
+  <article class="endpoint">
+    <header class="endpoint-header">
+      <span class="method method-put">PUT</span>
+      <div>
+        <h4>Atualiza uma categoria.</h4>
+        <code class="route">/api/category-types/:id</code>
+      </div>
+    </header>
+    <dl class="meta">
+      <div><dt>Autenticação</dt><dd>Bearer Token</dd></div>
+      <div><dt>Permissão</dt><dd>Usuário autenticado</dd></div>
+    </dl>
+    
+    
+    
+  </article>
+
+  <article class="endpoint">
+    <header class="endpoint-header">
+      <span class="method method-delete">DELETE</span>
+      <div>
+        <h4>Remove uma categoria.</h4>
+        <code class="route">/api/category-types/:id</code>
+      </div>
+    </header>
+    <dl class="meta">
+      <div><dt>Autenticação</dt><dd>Bearer Token</dd></div>
+      <div><dt>Permissão</dt><dd>Usuário autenticado</dd></div>
+    </dl>
+    
+    
+    <ul class="notes"><li>Bloqueado se a categoria estiver vinculada a tipo de conta.</li></ul>
+  </article>
+
+  <article class="endpoint">
+    <header class="endpoint-header">
+      <span class="method method-get">GET</span>
+      <div>
+        <h4>Lista tipos de contas.</h4>
+        <code class="route">/api/account-types</code>
+      </div>
+    </header>
+    <dl class="meta">
+      <div><dt>Autenticação</dt><dd>Bearer Token</dd></div>
+      <div><dt>Permissão</dt><dd>Usuário autenticado</dd></div>
+    </dl>
+    
+    <h5>Parâmetros de consulta</h5>
+    <table class="params">
+      <thead><tr><th>Nome</th><th>Descrição</th></tr></thead>
+      <tbody>
+        <tr><td><code>page</code></td><td>Página.</td></tr><tr><td><code>limit</code></td><td>Limite.</td></tr><tr><td><code>search</code></td><td>Busca.</td></tr><tr><td><code>type</code></td><td>Receita ou Despesa.</td></tr><tr><td><code>status</code></td><td>Ativo ou Inativo.</td></tr><tr><td><code>categoryId</code></td><td>ID da categoria.</td></tr>
+      </tbody>
+    </table>
+    
+    
+  </article>
+
+  <article class="endpoint">
+    <header class="endpoint-header">
+      <span class="method method-get">GET</span>
+      <div>
+        <h4>Consulta um tipo de conta.</h4>
+        <code class="route">/api/account-types/:id</code>
+      </div>
+    </header>
+    <dl class="meta">
+      <div><dt>Autenticação</dt><dd>Bearer Token</dd></div>
+      <div><dt>Permissão</dt><dd>Usuário autenticado</dd></div>
+    </dl>
+    
+    
+    
+  </article>
+
+  <article class="endpoint">
+    <header class="endpoint-header">
+      <span class="method method-post">POST</span>
+      <div>
+        <h4>Cria um tipo de conta.</h4>
+        <code class="route">/api/account-types</code>
+      </div>
+    </header>
+    <dl class="meta">
+      <div><dt>Autenticação</dt><dd>Bearer Token</dd></div>
+      <div><dt>Permissão</dt><dd>Usuário autenticado</dd></div>
+    </dl>
+    
+    
+  <h5>Exemplo de payload</h5>
+  <pre><code>{
+  &quot;description&quot;: &quot;Vendas de produtos&quot;,
+  &quot;type&quot;: &quot;Receita&quot;,
+  &quot;specie&quot;: &quot;Operacional&quot;,
+  &quot;status&quot;: true,
+  &quot;categoryId&quot;: 1
+}</code></pre>
+    
+  </article>
+
+  <article class="endpoint">
+    <header class="endpoint-header">
+      <span class="method method-put">PUT</span>
+      <div>
+        <h4>Atualiza um tipo de conta.</h4>
+        <code class="route">/api/account-types/:id</code>
+      </div>
+    </header>
+    <dl class="meta">
+      <div><dt>Autenticação</dt><dd>Bearer Token</dd></div>
+      <div><dt>Permissão</dt><dd>Usuário autenticado</dd></div>
+    </dl>
+    
+    
+    
+  </article>
+
+  <article class="endpoint">
+    <header class="endpoint-header">
+      <span class="method method-delete">DELETE</span>
+      <div>
+        <h4>Remove um tipo de conta.</h4>
+        <code class="route">/api/account-types/:id</code>
+      </div>
+    </header>
+    <dl class="meta">
+      <div><dt>Autenticação</dt><dd>Bearer Token</dd></div>
+      <div><dt>Permissão</dt><dd>Usuário autenticado</dd></div>
+    </dl>
+    
+    
+    <ul class="notes"><li>Bloqueado se houver vínculo com contas, receitas ou despesas.</li></ul>
+  </article>
+
+  <article class="endpoint">
+    <header class="endpoint-header">
+      <span class="method method-get">GET</span>
+      <div>
+        <h4>Lista tipos de pagamento.</h4>
+        <code class="route">/api/payment-types</code>
+      </div>
+    </header>
+    <dl class="meta">
+      <div><dt>Autenticação</dt><dd>Bearer Token</dd></div>
+      <div><dt>Permissão</dt><dd>Usuário autenticado</dd></div>
+    </dl>
+    
+    
+    
+  </article>
+
+  <article class="endpoint">
+    <header class="endpoint-header">
+      <span class="method method-get">GET</span>
+      <div>
+        <h4>Consulta um tipo de pagamento.</h4>
+        <code class="route">/api/payment-types/:id</code>
+      </div>
+    </header>
+    <dl class="meta">
+      <div><dt>Autenticação</dt><dd>Bearer Token</dd></div>
+      <div><dt>Permissão</dt><dd>Usuário autenticado</dd></div>
+    </dl>
+    
+    
+    
+  </article>
+
+  <article class="endpoint">
+    <header class="endpoint-header">
+      <span class="method method-post">POST</span>
+      <div>
+        <h4>Cria um tipo de pagamento.</h4>
+        <code class="route">/api/payment-types</code>
+      </div>
+    </header>
+    <dl class="meta">
+      <div><dt>Autenticação</dt><dd>Bearer Token</dd></div>
+      <div><dt>Permissão</dt><dd>Usuário autenticado</dd></div>
+    </dl>
+    
+    
+  <h5>Exemplo de payload</h5>
+  <pre><code>{
+  &quot;name&quot;: &quot;Pix&quot;,
+  &quot;description&quot;: &quot;Pagamento via Pix&quot;,
+  &quot;status&quot;: true
+}</code></pre>
+    
+  </article>
+
+  <article class="endpoint">
+    <header class="endpoint-header">
+      <span class="method method-put">PUT</span>
+      <div>
+        <h4>Atualiza um tipo de pagamento.</h4>
+        <code class="route">/api/payment-types/:id</code>
+      </div>
+    </header>
+    <dl class="meta">
+      <div><dt>Autenticação</dt><dd>Bearer Token</dd></div>
+      <div><dt>Permissão</dt><dd>Usuário autenticado</dd></div>
+    </dl>
+    
+    
+    
+  </article>
+
+  <article class="endpoint">
+    <header class="endpoint-header">
+      <span class="method method-delete">DELETE</span>
+      <div>
+        <h4>Remove um tipo de pagamento.</h4>
+        <code class="route">/api/payment-types/:id</code>
+      </div>
+    </header>
+    <dl class="meta">
+      <div><dt>Autenticação</dt><dd>Bearer Token</dd></div>
+      <div><dt>Permissão</dt><dd>Usuário autenticado</dd></div>
+    </dl>
+    
+    
+    <ul class="notes"><li>Bloqueado se estiver vinculado a contas a pagar ou receber.</li></ul>
+  </article>
+
+  <article class="endpoint">
+    <header class="endpoint-header">
+      <span class="method method-get">GET</span>
+      <div>
+        <h4>Lista origens de contas.</h4>
+        <code class="route">/api/origin-accounts</code>
+      </div>
+    </header>
+    <dl class="meta">
+      <div><dt>Autenticação</dt><dd>Bearer Token</dd></div>
+      <div><dt>Permissão</dt><dd>Usuário autenticado</dd></div>
+    </dl>
+    
+    <h5>Parâmetros de consulta</h5>
+    <table class="params">
+      <thead><tr><th>Nome</th><th>Descrição</th></tr></thead>
+      <tbody>
+        <tr><td><code>page</code></td><td>Página.</td></tr><tr><td><code>limit</code></td><td>Limite.</td></tr><tr><td><code>search</code></td><td>Busca por nome ou observação.</td></tr><tr><td><code>category</code></td><td>1 Despesa ou 2 Receita.</td></tr><tr><td><code>person</code></td><td>Pessoa ou Operação.</td></tr><tr><td><code>status</code></td><td>Ativo ou Inativo.</td></tr>
+      </tbody>
+    </table>
+    
+    
+  </article>
+
+  <article class="endpoint">
+    <header class="endpoint-header">
+      <span class="method method-get">GET</span>
+      <div>
+        <h4>Consulta uma origem.</h4>
+        <code class="route">/api/origin-accounts/:id</code>
+      </div>
+    </header>
+    <dl class="meta">
+      <div><dt>Autenticação</dt><dd>Bearer Token</dd></div>
+      <div><dt>Permissão</dt><dd>Usuário autenticado</dd></div>
+    </dl>
+    
+    
+    
+  </article>
+
+  <article class="endpoint">
+    <header class="endpoint-header">
+      <span class="method method-post">POST</span>
+      <div>
+        <h4>Cria uma origem.</h4>
+        <code class="route">/api/origin-accounts</code>
+      </div>
+    </header>
+    <dl class="meta">
+      <div><dt>Autenticação</dt><dd>Bearer Token</dd></div>
+      <div><dt>Permissão</dt><dd>Usuário autenticado</dd></div>
+    </dl>
+    
+    
+  <h5>Exemplo de payload</h5>
+  <pre><code>{
+  &quot;description&quot;: &quot;Fornecedor exemplo&quot;,
+  &quot;obs&quot;: &quot;Observação opcional&quot;,
+  &quot;category&quot;: 1,
+  &quot;person&quot;: true,
+  &quot;status&quot;: true
+}</code></pre>
+    
+  </article>
+
+  <article class="endpoint">
+    <header class="endpoint-header">
+      <span class="method method-put">PUT</span>
+      <div>
+        <h4>Atualiza uma origem.</h4>
+        <code class="route">/api/origin-accounts/:id</code>
+      </div>
+    </header>
+    <dl class="meta">
+      <div><dt>Autenticação</dt><dd>Bearer Token</dd></div>
+      <div><dt>Permissão</dt><dd>Usuário autenticado</dd></div>
+    </dl>
+    
+    
+    
+  </article>
+
+  <article class="endpoint">
+    <header class="endpoint-header">
+      <span class="method method-delete">DELETE</span>
+      <div>
+        <h4>Remove uma origem.</h4>
+        <code class="route">/api/origin-accounts/:id</code>
+      </div>
+    </header>
+    <dl class="meta">
+      <div><dt>Autenticação</dt><dd>Bearer Token</dd></div>
+      <div><dt>Permissão</dt><dd>Usuário autenticado</dd></div>
+    </dl>
+    
+    
+    <ul class="notes"><li>Bloqueado se estiver vinculada a contas a pagar ou receber.</li></ul>
+  </article>
+    </div>
+  </section>
+
+  <section id="audit" class="module">
+    <header class="module-toggle-row">
+      <button class="module-toggle" type="button" aria-expanded="false" aria-controls="audit-panel">
+        <span class="module-toggle-icon" aria-hidden="true"></span>
+        <h2>Auditoria, Backups e Dashboard</h2>
+      </button>
+      <p class="module-description">Rotas técnicas de manutenção e consulta consolidada.</p>
+    </header>
+    <div id="audit-panel" class="module-panel">
+<article class="endpoint">
+    <header class="endpoint-header">
+      <span class="method method-get">GET</span>
+      <div>
+        <h4>Lista logs de auditoria.</h4>
+        <code class="route">/api/audit-logs</code>
+      </div>
+    </header>
+    <dl class="meta">
+      <div><dt>Autenticação</dt><dd>Bearer Token</dd></div>
+      <div><dt>Permissão</dt><dd>Super Admin</dd></div>
+    </dl>
+    
+    <h5>Parâmetros de consulta</h5>
+    <table class="params">
+      <thead><tr><th>Nome</th><th>Descrição</th></tr></thead>
+      <tbody>
+        <tr><td><code>page</code></td><td>Página.</td></tr><tr><td><code>limit</code></td><td>Limite até 100.</td></tr><tr><td><code>module</code></td><td>Módulo filtrado.</td></tr><tr><td><code>action</code></td><td>Ação filtrada.</td></tr><tr><td><code>login</code></td><td>Login do usuário.</td></tr><tr><td><code>status</code></td><td>SUCESSO, ERRO ou INFO.</td></tr><tr><td><code>startDate</code></td><td>Data inicial.</td></tr><tr><td><code>endDate</code></td><td>Data final.</td></tr><tr><td><code>sortBy</code></td><td>dataHora, login, perfil, acao, modulo, status ou ip.</td></tr><tr><td><code>sortDirection</code></td><td>asc ou desc.</td></tr>
+      </tbody>
+    </table>
+    
+    
+  </article>
+
+  <article class="endpoint">
+    <header class="endpoint-header">
+      <span class="method method-get">GET</span>
+      <div>
+        <h4>Consulta opções disponíveis para filtros da auditoria.</h4>
+        <code class="route">/api/audit-logs/filter-options</code>
+      </div>
+    </header>
+    <dl class="meta">
+      <div><dt>Autenticação</dt><dd>Bearer Token</dd></div>
+      <div><dt>Permissão</dt><dd>Super Admin</dd></div>
+    </dl>
+    
+    
+    
+  </article>
+
+  <article class="endpoint">
+    <header class="endpoint-header">
+      <span class="method method-get">GET</span>
+      <div>
+        <h4>Consulta a última limpeza manual de logs.</h4>
+        <code class="route">/api/audit-logs/last-manual-cleanup</code>
+      </div>
+    </header>
+    <dl class="meta">
+      <div><dt>Autenticação</dt><dd>Bearer Token</dd></div>
+      <div><dt>Permissão</dt><dd>Super Admin</dd></div>
+    </dl>
+    
+    
+    
+  </article>
+
+  <article class="endpoint">
+    <header class="endpoint-header">
+      <span class="method method-post">POST</span>
+      <div>
+        <h4>Gera backup SQL dos logs antes da limpeza.</h4>
+        <code class="route">/api/audit-logs/cleanup-backup</code>
+      </div>
+    </header>
+    <dl class="meta">
+      <div><dt>Autenticação</dt><dd>Bearer Token</dd></div>
+      <div><dt>Permissão</dt><dd>Super Admin</dd></div>
+    </dl>
+    
+    
+  <h5>Exemplo de payload</h5>
+  <pre><code>{
+  &quot;months&quot;: 12
+}</code></pre>
+    <ul class="notes"><li>Períodos aceitos: 6, 12 ou 24 meses.</li><li>A resposta é um arquivo SQL.</li></ul>
+  </article>
+
+  <article class="endpoint">
+    <header class="endpoint-header">
+      <span class="method method-delete">DELETE</span>
+      <div>
+        <h4>Remove logs antigos.</h4>
+        <code class="route">/api/audit-logs/cleanup</code>
+      </div>
+    </header>
+    <dl class="meta">
+      <div><dt>Autenticação</dt><dd>Bearer Token</dd></div>
+      <div><dt>Permissão</dt><dd>Super Admin</dd></div>
+    </dl>
+    
+    
+  <h5>Exemplo de payload</h5>
+  <pre><code>{
+  &quot;months&quot;: 12
+}</code></pre>
+    <ul class="notes"><li>Períodos aceitos: 6, 12 ou 24 meses.</li><li>Operação definitiva.</li></ul>
+  </article>
+
+  <article class="endpoint">
+    <header class="endpoint-header">
+      <span class="method method-get">GET</span>
+      <div>
+        <h4>Gera backup SQL completo do banco.</h4>
+        <code class="route">/api/backups/sql</code>
+      </div>
+    </header>
+    <dl class="meta">
+      <div><dt>Autenticação</dt><dd>Bearer Token</dd></div>
+      <div><dt>Permissão</dt><dd>Super Admin</dd></div>
+    </dl>
+    
+    
+    <ul class="notes"><li>A resposta é um arquivo SQL.</li></ul>
+  </article>
+
+  <article class="endpoint">
+    <header class="endpoint-header">
+      <span class="method method-get">GET</span>
+      <div>
+        <h4>Retorna dados consolidados da Home.</h4>
+        <code class="route">/api/dashboard/home</code>
+      </div>
+    </header>
+    <dl class="meta">
+      <div><dt>Autenticação</dt><dd>Bearer Token</dd></div>
+      <div><dt>Permissão</dt><dd>Usuário autenticado</dd></div>
+    </dl>
+    
+    
+    <ul class="notes"><li>Inclui dados mensais, contas pendentes, receitas e despesas recentes.</li></ul>
+  </article>
+
+  <article class="endpoint">
+    <header class="endpoint-header">
+      <span class="method method-get">GET</span>
+      <div>
+        <h4>Lista formas de pagamento legadas.</h4>
+        <code class="route">/api/payment-methods</code>
+      </div>
+    </header>
+    <dl class="meta">
+      <div><dt>Autenticação</dt><dd>Bearer Token</dd></div>
+      <div><dt>Permissão</dt><dd>Usuário autenticado</dd></div>
+    </dl>
+    
+    
+    <ul class="notes"><li>Rota mantida por compatibilidade com a tabela formas_pgto.</li></ul>
+  </article>
+
+  <article class="endpoint">
+    <header class="endpoint-header">
+      <span class="method method-get">GET</span>
+      <div>
+        <h4>Consulta uma forma de pagamento legada.</h4>
+        <code class="route">/api/payment-methods/:id</code>
+      </div>
+    </header>
+    <dl class="meta">
+      <div><dt>Autenticação</dt><dd>Bearer Token</dd></div>
+      <div><dt>Permissão</dt><dd>Usuário autenticado</dd></div>
+    </dl>
+    
+    
+    
+  </article>
+
+  <article class="endpoint">
+    <header class="endpoint-header">
+      <span class="method method-post">POST</span>
+      <div>
+        <h4>Cria uma forma de pagamento legada.</h4>
+        <code class="route">/api/payment-methods</code>
+      </div>
+    </header>
+    <dl class="meta">
+      <div><dt>Autenticação</dt><dd>Bearer Token</dd></div>
+      <div><dt>Permissão</dt><dd>Usuário autenticado</dd></div>
+    </dl>
+    
+    
+  <h5>Exemplo de payload</h5>
+  <pre><code>{
+  &quot;name&quot;: &quot;À vista&quot;,
+  &quot;description&quot;: &quot;Pagamento à vista&quot;,
+  &quot;status&quot;: true
+}</code></pre>
+    
+  </article>
+
+  <article class="endpoint">
+    <header class="endpoint-header">
+      <span class="method method-put">PUT</span>
+      <div>
+        <h4>Atualiza uma forma de pagamento legada.</h4>
+        <code class="route">/api/payment-methods/:id</code>
+      </div>
+    </header>
+    <dl class="meta">
+      <div><dt>Autenticação</dt><dd>Bearer Token</dd></div>
+      <div><dt>Permissão</dt><dd>Usuário autenticado</dd></div>
+    </dl>
+    
+    
+    
+  </article>
+
+  <article class="endpoint">
+    <header class="endpoint-header">
+      <span class="method method-delete">DELETE</span>
+      <div>
+        <h4>Remove uma forma de pagamento legada.</h4>
+        <code class="route">/api/payment-methods/:id</code>
+      </div>
+    </header>
+    <dl class="meta">
+      <div><dt>Autenticação</dt><dd>Bearer Token</dd></div>
+      <div><dt>Permissão</dt><dd>Usuário autenticado</dd></div>
+    </dl>
+    
+    
+    
+  </article>
+    </div>
+  </section>
+
+      <footer class="footer">
+        <p>BRazucaFlow API - documentação técnica oficial. Total de endpoints documentados: 76.</p>
+      </footer>
+    </main>
+  </div>
+<script>
+    (() => {
+      const modules = Array.from(document.querySelectorAll('.module'));
+      const toggleAllButton = document.querySelector('[data-action="toggle-all"]');
+
+      const setModuleState = (module, isOpen) => {
+        const button = module.querySelector('.module-toggle');
+        module.classList.toggle('is-open', isOpen);
+        button?.setAttribute('aria-expanded', String(isOpen));
+      };
+
+      const updateToggleAllButton = () => {
+        const allOpen = modules.every((module) => module.classList.contains('is-open'));
+        if (toggleAllButton) {
+          toggleAllButton.textContent = allOpen ? 'Fechar Todos' : 'Abrir Todos';
+          toggleAllButton.setAttribute('aria-label', allOpen ? 'Fechar todos os módulos' : 'Abrir todos os módulos');
+        }
+      };
+
+      modules.forEach((module) => {
+        const button = module.querySelector('.module-toggle');
+        button?.addEventListener('click', () => {
+          setModuleState(module, !module.classList.contains('is-open'));
+          updateToggleAllButton();
+        });
+      });
+
+      toggleAllButton?.addEventListener('click', () => {
+        const shouldOpen = !modules.every((module) => module.classList.contains('is-open'));
+        modules.forEach((module) => setModuleState(module, shouldOpen));
+        updateToggleAllButton();
+      });
+
+      updateToggleAllButton();
+    })();
+  </script>
+</body>
+</html>

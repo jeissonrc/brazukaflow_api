@@ -1,8 +1,10 @@
 // Importa o Express (framework que cria o servidor e gerencia rotas)
 const express = require('express');
+const path = require('path');
 
 // Inicializa a aplicação
 const app = express();
+const publicDir = path.join(__dirname, '..', 'public');
 
 // Importa as rotas dos módulos
 const userRoutes = require('./routes/userRoutes');
@@ -51,6 +53,17 @@ app.use((req, res, next) => {
   if (req.method === 'OPTIONS') return res.sendStatus(204);
   next();
 });
+
+// Páginas públicas da API
+app.get('/', (req, res) => {
+  res.sendFile(path.join(publicDir, 'index.html'));
+});
+
+app.get('/docs', (req, res) => {
+  res.sendFile(path.join(publicDir, 'docs', 'index.html'));
+});
+
+app.use('/docs', express.static(path.join(publicDir, 'docs')));
 
 // Middleware global para formatar respostas antes de enviar ao cliente
 app.use(responseMiddleware);
