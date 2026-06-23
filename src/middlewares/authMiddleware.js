@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
-const JWT_SECRET = "sua_chave_secreta_aqui"; // mesma chave do UserService
+//const JWT_SECRET = "sua_chave_secreta_aqui"; // mesma chave do UserService
+const JWT_SECRET = process.env.JWT_SECRET;
 
 module.exports = (req, res, next) => {
   const authHeader = req.headers.authorization;

@@ -5,7 +5,8 @@ const jwt = require('jsonwebtoken');
 const { Op, literal } = require('sequelize');
 const { PROFILE_IDS, USER_ROLES, getRoleByProfileId } = require('../constants/profileIds');
 
-const JWT_SECRET = "sua_chave_secreta_aqui"; // trocar por variável de ambiente
+//const JWT_SECRET = "sua_chave_secreta_aqui"; // trocar por variável de ambiente
+const JWT_SECRET = process.env.JWT_SECRET;
 const SALT_ROUNDS = 10;
 const includeUserRelations = [{ model: Profile, as: 'profile' }];
 
