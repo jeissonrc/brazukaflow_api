@@ -2,6 +2,11 @@ const sequelize = require('../config/database');
 
 const quoteIdentifier = (value) => `\`${String(value).replace(/`/g, '``')}\``;
 
+const normalizeCreateTableSql = (sql) => String(sql).replace(
+  /"([^"]+)"/g,
+  (_, identifier) => quoteIdentifier(identifier)
+);
+
 const formatDateTime = (value) => {
   const date = value instanceof Date ? value : new Date(value);
   const pad = (number) => String(number).padStart(2, '0');
@@ -63,7 +68,7 @@ class BackupService {
 
       lines.push(`DROP TABLE IF EXISTS ${quotedTable};`);
       if (createTableSql) {
-        lines.push(`${createTableSql};`);
+        lines.push(`${normalizeCreateTableSql(createTableSql)};`);
       }
       lines.push('');
     }
