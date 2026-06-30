@@ -12,9 +12,10 @@ API REST do **BRazucaFlow**, uma plataforma de gerenciamento financeiro para con
 
 | Recurso | Endereço |
 | --- | --- |
-| API publicada | [bruzukaflow-api.onrender.com](https://bruzukaflow-api.onrender.com/) |
-| Documentação técnica | [bruzukaflow-api.onrender.com/docs](https://bruzukaflow-api.onrender.com/docs) |
-| Frontend | [brazukaflow_front_app](https://github.com/jeissonrc/brazukaflow_front_app) |
+| API publicada | [api.brazukaflow.com.br](https://api.brazukaflow.com.br/) |
+| Documentação técnica | [api.brazukaflow.com.br/docs](https://api.brazukaflow.com.br/docs) |
+| Aplicação web | [brazukaflow.com.br](https://brazukaflow.com.br/) |
+| Repositório do frontend | [brazukaflow_front_app](https://github.com/jeissonrc/brazukaflow_front_app) |
 
 > A instância gratuita do serviço pode levar alguns segundos para responder ao primeiro acesso após um período de inatividade.
 
@@ -74,7 +75,7 @@ Todos os recursos, exceto o login, exigem um token JWT válido.
 | Auditoria | `/api/audit-logs` |
 | Backups | `/api/backups` |
 
-A relação completa de métodos, parâmetros, filtros e exemplos está disponível na [documentação técnica online](https://bruzukaflow-api.onrender.com/docs).
+A relação completa de métodos, parâmetros, filtros e exemplos está disponível na [documentação técnica online](https://api.brazukaflow.com.br/docs).
 
 ## Autenticação
 
@@ -174,4 +175,3 @@ server.js          # Inicialização do serviço
 ## Status do projeto
 
 Projeto em desenvolvimento ativo. A versão publicada corresponde à API `1.0.0`.
-
